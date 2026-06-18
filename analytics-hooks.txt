@@ -1,0 +1,22 @@
+﻿    // ===== DELIVERY ANALYTICS =====
+    useGetDeliveryAnalytics: () =>
+      useQuery<BaseApiResponse<DeliveryAnalytics>>({
+        queryKey: DELIVERY_QUERY_KEYS.analyticsList(),
+        queryFn: async (): Promise<BaseApiResponse<DeliveryAnalytics>> => {
+          const response = await apiClient.get<BaseApiResponse<DeliveryAnalytics>>(
+            ENDPOINTS.DELIVERY.GET_ANALYTICS,
+          );
+          return response.data;
+        },
+      }),
+
+    useGetDeliveryStats: () =>
+      useQuery<BaseApiResponse<DeliveryStats>>({
+        queryKey: DELIVERY_QUERY_KEYS.statsList(),
+        queryFn: async (): Promise<BaseApiResponse<DeliveryStats>> => {
+          const response = await apiClient.get<BaseApiResponse<DeliveryStats>>(
+            ENDPOINTS.DELIVERY.GET_ANALYTICS_STATS,
+          );
+          return response.data;
+        },
+      }),
