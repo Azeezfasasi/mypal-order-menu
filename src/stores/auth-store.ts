@@ -251,7 +251,7 @@ export const useAuthStore = create<AuthState>()(
 
             // If token and tokenType exist, sync cookies
             if (token && tokenType) {
-              console.log("Syncing cookies with hydrated state");
+              // console.log("Syncing cookies with hydrated state");
               // Ensure cookie expiry matches token type when hydrating
               const expirySeconds = isTemporaryTokenType(tokenType)
                 ? 60 * 15
