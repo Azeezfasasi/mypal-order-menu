@@ -134,7 +134,7 @@ export default function DashboardSidebar({
       {/* Sidebar - Fixed positioning and width handling */}
       <aside
         className={cn(
-          "flex h-full flex-col bg-[#001529] transition-all duration-300 ease-in-out",
+          "flex h-full flex-col bg-[#001529] transition-all duration-300 ease-in-out pt-2",
           // Desktop width handling
           !isMobile && isOpen && "w-64",
           !isMobile && !isOpen && "w-16",
@@ -146,22 +146,25 @@ export default function DashboardSidebar({
       >
         {/* Logo */}
         <div className="flex h-16 items-center px-4 flex-shrink-0 relative">
-          <h1
-            className={cn(
-              "text-2xl font-bold text-white transition-all duration-300 font-sora",
-              !isOpen && !isMobile && "lg:opacity-0 scale-95",
-            )}
-          >
-            My
-            <span
+          <div className="flex flex-col items-start justify-center transition-all duration-300 gap-0">
+            <h1
               className={cn(
-                "text-primary transition-all duration-300",
-                !isOpen && !isMobile && "opacity-0",
+                "text-2xl font-bold text-white transition-all duration-300 font-sora",
+                !isOpen && !isMobile && "lg:opacity-0 scale-95",
               )}
             >
-              Pal
-            </span>
-          </h1>
+              My
+              <span
+                className={cn(
+                  "text-primary transition-all duration-300",
+                  !isOpen && !isMobile && "opacity-0",
+                )}
+              >
+                Pal
+              </span>
+            </h1>
+            <p className="text-white md:text-[14px] text-[14px]">Iconic Delicacy Order Menu</p>
+          </div>
           {isMobile && (
             <Button
               variant="ghost"

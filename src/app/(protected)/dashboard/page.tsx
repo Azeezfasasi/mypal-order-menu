@@ -5,19 +5,19 @@ import { OrdersInProgress } from "@/components/dashboard/orders-in-progress";
 import { MealPrepAlert } from "@/components/dashboard/meal-prep-alert";
 import { useOrderStats, useActiveOrders } from "@/hooks/use-orders";
 import { useAuthStore } from "@/stores/auth-store";
-import { NotificationApi } from "@/services/api/notification-api";
-import { Bell, MessageSquareText, AlertCircle, Loader } from "lucide-react";
+// import { NotificationApi } from "@/services/api/notification-api";
+import { AlertCircle, Loader } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const { stats, loading: statsLoading, error: statsError } = useOrderStats();
   const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders();
   const business = useAuthStore((state) => state.business);
-  const router = useRouter();
+  // const router = useRouter();
   
-  const { data: unreadData } = NotificationApi.useGetUnreadCount();
+  // const { data: unreadData } = NotificationApi.useGetUnreadCount();
 
   return (
     <div className="space-y-6 px-0">
@@ -49,19 +49,19 @@ export default function DashboardPage() {
         <div>
           {/* Greetings */}
           <div>
-            <h1 className="text-[12px] text-[#DB3A07] leading-[100%] font-bold">Good morning, <br /> <span className="text-[#031927] font-extrabold text-[16px] leading-[100%]">{business?.business_name || "Guest"}</span> 👋</h1>
-            <p className="text-[12px] font-bold text-[#68798A] leading-[100%] flex items-center gap-1 mt-1">
+            <h1 className="md:text-[12px] text-[22px] text-[#DB3A07] leading-[100%] font-bold">Good morning, <br /> <span className="text-[#031927] font-extrabold md:text-[16px] text-[20px] leading-[100%]">{business?.business_name || "Guest"}</span> 👋</h1>
+            <p className="md:text-[12px] text-[14px] font-bold text-[#68798A] leading-[100%] flex items-center gap-1 mt-1">
               Order Manager
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        {/* <div className="flex gap-2">
           <button
             onClick={() => router.push("/notifications")}
-            className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative"
+            className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative z-0"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5 z-0" />
             {unreadData && unreadData.count > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
                 {unreadData.count > 99 ? "99+" : unreadData.count}
@@ -71,7 +71,7 @@ export default function DashboardPage() {
           <div className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600">
             <MessageSquareText className="w-5 h-5" />
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Live Overview */}

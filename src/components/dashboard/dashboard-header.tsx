@@ -1,11 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Menu, MessageCircleMore } from "lucide-react";
+import { Menu, MessageSquareText } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
 import MessagingModal from "../messaging/messaging-modal";
 import { BusinessMessagingApi } from "@/services/api/business-messaging-api";
+import { NotificationApi } from "@/services/api/notification-api";
+import { Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -15,6 +18,9 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
   const pathname = usePathname();
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
+  const router = useRouter();
+
+  const { data: unreadData } = NotificationApi.useGetUnreadCount();
 
   // Get page title from pathname
   const getPageTitle = () => {
@@ -88,21 +94,33 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       {/* Right side - Actions */}
-      <div className="flex items-center lg:gap-1 gap-2">
+      <div className="flex items-center md:gap-3 gap-3">
+
+        <button
+          onClick={() => router.push("/notifications")}
+          className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative z-0"
+        >
+          <Bell className="w-5 h-5 z-0" />
+          {unreadData && unreadData.count > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+              {unreadData.count > 99 ? "99+" : unreadData.count}
+            </span>
+          )}
+        </button>
 
         {/* QR Code - Hidden on mobile */}
         <Button
           onClick={() => setIsMessagingOpen(true)}
           variant="ghost"
           // size="icon"
-          className="relative flex h-9 w-9 p-0!"
+          className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600"
         >
           {totalUnreadCount! > 0 &&
             <div className="absolute top-1 right-1 text-[10px] bg-[#FF6900] text-white flex items-center justify-center rounded-full h-4 w-4 ml-2">
               {totalUnreadCount}
             </div>
           }
-          <MessageCircleMore size={18} className="text-[#667185]" />
+          <MessageSquareText size={18} className="text-red-600]" />
           <span className="sr-only">Messages</span>
         </Button>
 
