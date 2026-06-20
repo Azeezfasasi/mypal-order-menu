@@ -104,6 +104,7 @@ export interface IUpdateServiceItemDto {
   description?: string;
   preparation_time?: number; // Preparation time in minutes for mainstream items
   category_id: string;
+  is_available?: boolean; // Availability status of the item
   mealDetail?: {
     mealType?: string;
     cuisine?: string;

@@ -1,279 +1,386 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Plus, MoreVertical } from "lucide-react";
+import React, { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Loader from "@/components/shared/loading-spinner";
+import { ServiceOfferingApi } from "@/services/api/business-service-menu-offerings";
+import { toast } from "sonner";
+import Image from "next/image";
+import { AlertCircle, Search, Plus, Trash } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { menuAndOrdersApi } from "@/services/api/fine-din-menu-orders-api";
-import AddMenuItemModal, { MenuItemFormData } from "@/components/menu-management/add-menu-item-modal";
 
 interface MenuItem {
   id: string;
   name: string;
-  description: string;
-  price: string;
-  stock_quantity: number;
-  unit_type: string;
-  is_available: boolean;
-  image_url: string;
-  category?: string;
+  description?: string;
+  price: number;
+  image?: string;
+  image_urls?: string[];
+  stock_quantity?: number;
+  is_available?: boolean;
 }
 
-interface MenuCategory {
+interface Category {
   id: string;
   name: string;
-  is_active: boolean;
   items: MenuItem[];
+  subCategories?: Category[];
 }
 
+type CategoryData = Category;
+
+type FlattenedItem = MenuItem & { categoryId: string; categoryName: string };
+
 export default function MenuManagementPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const router = useRouter();
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [itemAvailability, setItemAvailability] = useState<Record<string, boolean>>({});
+  
+  const {
+    data: menuData,
+    isLoading,
+    error,
+  } = ServiceOfferingApi.useBusinessMenus();
+  
+  const deleteItem = ServiceOfferingApi.useDeleteServiceItem();
+  const updateItem = ServiceOfferingApi.useUpdateServiceItem();
 
-  const api = menuAndOrdersApi();
-  const { data: menuCategories, isLoading, error } = api.useGetMenuCategories();
+  // Recursively flatten items from nested subcategories
+  const flattenItems = useCallback((category: Category, parentCategoryId: string, parentCategoryName: string): FlattenedItem[] => {
+    const items: FlattenedItem[] = [];
 
-  const categories = useMemo(() => {
-    if (!menuCategories?.data) return [{ name: "All Items", count: 0, id: "all" }];
-
-    const cats = menuCategories.data.map((cat: MenuCategory) => ({
-      name: cat.name,
-      count: cat.items?.length || 0,
-      id: cat.id,
-    }));
-
-    return [{ name: "All Items", count: cats.reduce((sum: number, c) => sum + c.count, 0), id: "all" }, ...cats];
-  }, [menuCategories]);
-
-  const allItems = useMemo(() => {
-    if (!menuCategories?.data) return [];
-    return menuCategories.data.flatMap((cat: MenuCategory) =>
-      (cat.items || []).map((item: MenuItem) => ({ ...item, category: cat.name }))
-    );
-  }, [menuCategories]);
-
-  const filteredItems = useMemo(() => {
-    let items = allItems;
-
-    if (selectedCategory !== "All Items") {
-      items = items.filter((item) => item.category === selectedCategory);
+    // Add items from current level
+    if (category.items && Array.isArray(category.items)) {
+      category.items.forEach((item: MenuItem) => {
+        items.push({
+          ...item,
+          categoryId: parentCategoryId,
+          categoryName: parentCategoryName,
+        });
+      });
     }
 
-    if (searchQuery.trim()) {
-      items = items.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    // Recursively add items from subcategories
+    if (category.subCategories && Array.isArray(category.subCategories)) {
+      category.subCategories.forEach((subCat: Category) => {
+        const subItems = flattenItems(subCat, parentCategoryId, parentCategoryName);
+        items.push(...subItems);
+      });
     }
 
     return items;
+  }, []);
+
+  // Flatten categories and items
+  const { categories, allItems } = useMemo(() => {
+    const cats = (menuData?.data as CategoryData[]) || [];
+    const items: FlattenedItem[] = [];
+    
+    console.log("Menu data:", menuData);
+    console.log("Categories:", cats);
+    
+    cats.forEach((cat) => {
+      console.log(`Category ${cat.name}:`, cat);
+      
+      // Recursively flatten items from this category and all its subcategories
+      const categoryItems = flattenItems(cat, cat.id, cat.name);
+      items.push(...categoryItems);
+    });
+    
+    console.log("Flattened items:", items);
+    return { categories: cats, allItems: items };
+  }, [menuData, flattenItems]);
+
+  // Build category tabs with counts
+  const categoryTabs = useMemo(() => {
+    const tabs = [
+      { id: "all", name: "All Items", count: allItems.length }
+    ];
+    
+    categories.forEach((cat) => {
+      // Count items recursively including all subcategories
+      const countItemsRecursive = (category: Category): number => {
+        let count = category.items?.length || 0;
+        if (category.subCategories && Array.isArray(category.subCategories)) {
+          category.subCategories.forEach((subCat: Category) => {
+            count += countItemsRecursive(subCat);
+          });
+        }
+        return count;
+      };
+
+      const itemCount = countItemsRecursive(cat);
+      tabs.push({
+        id: cat.id,
+        name: cat.name,
+        count: itemCount,
+      });
+    });
+    
+    return tabs;
+  }, [categories, allItems.length]);
+
+  // Filter items based on category and search
+  const filteredItems = useMemo(() => {
+    let items = allItems;
+    
+    if (selectedCategory !== "all") {
+      items = items.filter((item) => item.categoryId === selectedCategory);
+    }
+    
+    if (searchQuery.trim()) {
+      items = items.filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+      );
+    }
+    
+    return items;
   }, [allItems, selectedCategory, searchQuery]);
 
-  const handleAddItem = (itemData: MenuItemFormData) => {
-    // TODO: Call API to add item
-    console.log("Add item:", itemData);
-    setIsAddModalOpen(false);
+  const handleToggleAvailability = (itemId: string, item: FlattenedItem) => {
+    // Get current visual state from local state or original data
+    const currentStatus = itemAvailability[itemId] !== undefined 
+      ? itemAvailability[itemId] 
+      : (item.is_available || true);
+    
+    const newStatus = !currentStatus;
+    
+    // Update local state immediately for optimistic UI
+    setItemAvailability((prev) => ({ ...prev, [itemId]: newStatus }));
+    
+    // Call API to persist the change
+    const updatePromise = updateItem.mutateAsync({
+      itemId,
+      itemData: {
+        category_id: item.categoryId,
+        is_available: newStatus,
+      },
+    }).catch((error) => {
+      console.error("❌ [TOGGLE AVAILABILITY ERROR]", {
+        itemId,
+        itemName: item.name,
+        newStatus,
+        error: error.response?.data || error.message,
+      });
+      // Revert optimistic update on error
+      setItemAvailability((prev) => ({ ...prev, [itemId]: currentStatus }));
+      throw error;
+    });
+
+    toast.promise(updatePromise, {
+      loading: `Updating availability...`,
+      success: `Item ${newStatus ? "enabled" : "disabled"} successfully!`,
+      error: (err) => {
+        const errorMsg = err?.response?.data?.message || "Failed to update availability";
+        return errorMsg;
+      },
+    });
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    const promise = deleteItem.mutateAsync(itemId);
+
+    toast.promise(promise, {
+      loading: "Deleting item...",
+      success: "Item deleted successfully!",
+      error: (error) => {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "An unknown error occurred while deleting the item.";
+        return `Failed to delete item: ${errorMessage}`;
+      },
+    });
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-2 cursor-pointer">
-          <button onClick={() => router.back()} className="text-gray-600 cursor-pointer"><Image src="/images/arrowleft.svg" alt="Back" width={16} height={16} className="w-6 h-6" /></button>
-          <h1 className="text-xl font-bold">Menu Management</h1>
-        </div>
-        <p className="text-sm text-gray-600">Manage availability and prices</p>
-      </div>
-
-      {/* Search */}
-      <div className="">
-        {/* <Image
-            width={20}
-            height={20}
-            src="/images/search.svg"
-            alt="Search Icon"
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-        /> */}
-        <Input
-            type="text"
-            placeholder="Search menu item..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-1/2 md:w-full pl-5 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
-        />
-      </div>
-
-      {/* Add Item Button */}
-      <Button 
-        onClick={() => setIsAddModalOpen(true)}
-        className="w-auto md:w-full bg-[#FEF2EE] hover:bg-orange-200 border border-[#DB3A0780] rounded-lg text-[14px] font-semibold leading-[145%] text-[#DB3A07] text-center flex items-center justify-center gap-2 mx-auto"
-      >
-        <Plus className="w-5 h-5 mr-2" />
-        Add Item
-      </Button>
-
-      {/* Category Tabs */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-4 md:grid-cols-3 gap-2">
-          {categories.map((category) => (
-            <button
-              key={category.name}
-              onClick={() => setSelectedCategory(category.name)}
-              className={cn(
-                "rounded-lg px-3 py-6 text-sm transition-all",
-                selectedCategory === category.name
-                  ? "bg-orange-100 text-orange-600 border-2 border-orange-500 font-bold"
-                  : "bg-white text-gray-700 border border-gray-200 hover:border-gray-300"
-              )}
-            >
-              <div className="font-semibold">{category.name}</div>
-              <div className="text-xs">{category.count}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sort */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-bold">
-          {selectedCategory} ({filteredItems.length})
-        </h2>
-        <button className="text-orange-500 text-sm font-medium hover:underline">
-          Sort by: Name A-Z ▾
+      <div className="flex items-center gap-2 mb-2">
+        <button onClick={() => router.back()} className="text-gray-600">
+          <Image
+            src="/images/arrowleft.svg"
+            alt="Back"
+            width={16}
+            height={16}
+            className="w-6 h-6"
+          />
         </button>
+        <div className="flex flex-col items-start justify-start gap-0">
+          <h1 className="text-[24px] font-extrabold leading-6.5 text-[#031927]">Menu Management</h1>
+          <p className="text-[16px] font-medium leading-6.5 text-[#68798A]">Manage availability and prices</p>
+        </div>
       </div>
 
-      {/* Menu Items List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Loading menu items...</p>
+      {error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Failed to load menu</p>
+            <p className="text-xs text-red-700 mt-1">{error?.message || "An error occurred"}</p>
           </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-500">Error loading menu items</p>
+        </div>
+      ) : isLoading ? (
+        <Loader message="Loading menu items..." />
+      ) : (
+        <>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search order id, customer name, item name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 py-3 bg-white rounded-full border border-[#E1E3E7]"
+            />
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white shadow-sm">
-            <div className="text-center">
-              <div className="text-gray-400 mb-3">
-                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-               </svg>
-             </div>
-              <p className="md:text-sm text-[18px] font-semibold text-gray-700">No menu items found</p>
-              <p className="md:text-xs text-[14px] text-gray-500 mt-1">Try adjusting your filters or search criteria</p>
-            </div>
-          </div>
-        ) : (
-          filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className={cn(
-                "rounded-lg p-4 border transition-opacity",
-                item.is_available
-                  ? "bg-white border-gray-200"
-                  : "bg-gray-50 border-gray-200 opacity-60"
-              )}
-            >
-              <div className="flex gap-3">
-                {/* Item Image */}
-                <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 overflow-hidden">
-                  <Image
-                    width={64}
-                    height={64}
-                    src={item.image_url || "/images/rice.svg"}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
 
-                {/* Item Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-sm">{item.name}</h3>
-                  <p className="text-sm font-bold text-orange-600 mt-1">₦{Number(item.price).toLocaleString()}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className={cn(
-                      "text-xs font-medium px-2 py-1 rounded-full",
-                      item.is_available
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
-                    )}>
-                      {item.is_available ? "● Available" : "● Unavailable"}
-                    </span>
+          {/* Add Item Button */}
+          <Button 
+            onClick={() => {
+              // TODO: Open add item modal
+              toast.info("Add item modal - to be implemented");
+            }}
+            className="w-full bg-[#FEF2EE] hover:bg-orange-100 border border-[#DB3A0780] rounded-lg text-[14px] font-semibold text-[#DB3A07] py-3 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Item
+          </Button>
+
+          {/* Category Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {categoryTabs.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-4 py-3 rounded-lg text-sm whitespace-nowrap transition-all flex flex-col items-center gap-1 ${
+                  selectedCategory === category.id
+                    ? "bg-[#DB3A07] text-white"
+                    : "bg-white text-gray-700 border border-gray-200"
+                }`}
+              >
+                <span className="font-semibold">{category.name}</span>
+                <span className="text-xs">{category.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Results Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900">
+              All Items ({filteredItems.length})
+            </h2>
+            <button className="text-[#DB3A07] text-sm font-medium hover:underline">
+              Sort by: Name A-Z ▾
+            </button>
+          </div>
+
+          {/* Items List */}
+          <div className="space-y-3">
+            {filteredItems.length === 0 ? (
+              <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white">
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-700">No items found</p>
+                  <p className="text-xs text-gray-500 mt-1">Try adjusting your filters or search</p>
+                </div>
+              </div>
+            ) : (
+              filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                      {/* Item Image */}
+                      <div className="w-16 h-16 bg-gray-100 rounded-lg shrink-0 overflow-hidden">
+                        <Image
+                          width={64}
+                          height={64}
+                          src={item.image_urls?.[0] || item.image || "/images/rice.svg"}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Item Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm text-gray-900">{item.name}</h3>
+                        <p className="text-sm font-bold text-[#DB3A07] mt-1">₦{Number(item.price).toLocaleString()}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                            ● Available
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Availability Toggle */}
+                      <button
+                        onClick={() => handleToggleAvailability(item.id, item)}
+                        className={`w-12 h-7 rounded-full transition-colors ${
+                          itemAvailability[item.id] !== undefined
+                            ? itemAvailability[item.id]
+                              ? "bg-[#DB3A07]"
+                              : "bg-gray-300"
+                            : item.is_available
+                            ? "bg-[#DB3A07]"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                            itemAvailability[item.id] !== undefined
+                              ? itemAvailability[item.id]
+                                ? "translate-x-6"
+                                : "translate-x-1"
+                              : item.is_available
+                              ? "translate-x-6"
+                              : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-3 flex gap-2 pt-3 border-t border-gray-100 w-full justify-end">
+                    <Button 
+                      onClick={() => {
+                        // TODO: Open edit price modal
+                        toast.info("Edit price modal - to be implemented");
+                      }}
+                      className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
+                    >
+                      ✏️ Edit Price
+                    </Button>
+                    <Button 
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
+                    >
+                      <Trash className="w-4 h-4" /> Delete
+                    </Button>
                   </div>
                 </div>
+              ))
+            )}
+          </div>
 
-                {/* Actions */}
-                <div className="flex items-start gap-2">
-                  <button
-                    onClick={() => {
-                      // TODO: Toggle availability
-                      console.log("Toggle availability for", item.id);
-                    }}
-                    className={cn(
-                      "p-2 rounded-lg transition-colors",
-                      item.is_available
-                        ? "bg-orange-600 text-white hover:bg-orange-700"
-                        : "bg-gray-300 text-white hover:bg-gray-400"
-                    )}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-600 hover:text-gray-900">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Edit and More Options */}
-              <div className="mt-3 flex gap-2">
-                <Button 
-                  onClick={() => {
-                    // TODO: Open edit price modal
-                    console.log("Edit price for", item.id);
-                  }}
-                  className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-sm"
-                >
-                  ✏️ Edit Price
-                </Button>
-                <Button 
-                  onClick={() => {
-                    // TODO: Delete item
-                    console.log("Delete item", item.id);
-                  }}
-                  className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-sm"
-                >
-                  🗑️ Delete
-                </Button>
-              </div>
+          {/* Unavailable Warning */}
+          {filteredItems.some(item => !item.is_available) && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-orange-800">
+                <span className="font-semibold">Unavailable items won&apos;t be visible to customers.</span>
+                <span> Toggle on to make them available.</span>
+              </p>
             </div>
-          ))
-        )}
-      </div>
-
-      {/* Unavailable Warning */}
-      {filteredItems.some(item => !item.is_available) && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-6">
-          <p className="text-xs text-orange-800">
-            <span className="font-semibold">Unavailable items won&apos;t be visible to customers.</span>
-            <span> Mark them available when back in stock.</span>
-          </p>
-        </div>
+          )}
+        </>
       )}
-
-      {/* Add Menu Item Modal */}
-      <AddMenuItemModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmit={handleAddItem}
-      />
     </div>
   );
 }
