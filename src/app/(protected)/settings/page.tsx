@@ -22,8 +22,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl md:text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground md:text-sm">
-          View and manage your company profile, media, accounts, and
-          preferences.
+          View and manage your company profile and accounts preferences.
         </p>
       </div>
       <Tabs defaultValue="profile" className="w-full">

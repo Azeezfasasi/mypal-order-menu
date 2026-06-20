@@ -24,7 +24,7 @@ import { BUSINESS_QUERY_KEYS } from "@/services/query-keys";
 import { BusinessCategoryType } from "@/types/enums";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckIcon, Loader2, PencilIcon, Upload, XIcon } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -223,35 +223,35 @@ export default function BusinessProfileTab() {
   };
 
   // Toggle edit mode
-  const toggleEditMode = () => {
-    if (editMode) {
-      // Reset form to original values when canceling edit
-      if (businessData?.data) {
-        const business = businessData.data;
-        form.reset(
-          {
-            business_name: business.business_name || "",
-            address: business.address || "",
-            email: business.email || "",
-            phone_number: business.business_number || "",
-            business_category:
-              business.category?.business_type || business.category?.id || "",
-            business_type: business.business_type || "",
-            description: business.description || "",
-            business_bank_name: business.business_bank_name || "",
-            business_acc_name: business.business_acc_name || "",
-            business_acc_number: business.business_acc_number || "",
-            profile_image: undefined,
-          },
-          {
-            keepDirty: false,
-            keepErrors: false,
-          },
-        );
-      }
-    }
-    setEditMode(!editMode);
-  };
+  // const toggleEditMode = () => {
+  //   if (editMode) {
+  //     // Reset form to original values when canceling edit
+  //     if (businessData?.data) {
+  //       const business = businessData.data;
+  //       form.reset(
+  //         {
+  //           business_name: business.business_name || "",
+  //           address: business.address || "",
+  //           email: business.email || "",
+  //           phone_number: business.business_number || "",
+  //           business_category:
+  //             business.category?.business_type || business.category?.id || "",
+  //           business_type: business.business_type || "",
+  //           description: business.description || "",
+  //           business_bank_name: business.business_bank_name || "",
+  //           business_acc_name: business.business_acc_name || "",
+  //           business_acc_number: business.business_acc_number || "",
+  //           profile_image: undefined,
+  //         },
+  //         {
+  //           keepDirty: false,
+  //           keepErrors: false,
+  //         },
+  //       );
+  //     }
+  //   }
+  //   setEditMode(!editMode);
+  // };
 
   // Trigger file input click
   const triggerFileInput = () => {
@@ -273,7 +273,7 @@ export default function BusinessProfileTab() {
         <h2 className="text-xl md:text-lg font-semibold text-primary-500 font-sora">
           Company Profile
         </h2>
-        <div className="flex gap-2 md:w-full md:flex-col">
+        {/* <div className="flex gap-2 md:w-full md:flex-col">
           {editMode ? (
             <>
               <Button
@@ -327,7 +327,7 @@ export default function BusinessProfileTab() {
               )}
             </Button>
           )}
-        </div>
+        </div> */}
       </div>
 
       {/* Profile Form */}

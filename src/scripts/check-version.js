@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 function getCurrentVersion() {
-  console.log("📋 MyPal Business Admin - Version Information\n");
+  console.log("📋 MyPal  Iconic Delicacy Order Menu - Version Information\n");
 
   const info = {
     buildVersion: process.env.BUILD_VERSION || "Not set",

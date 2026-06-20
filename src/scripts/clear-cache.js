@@ -78,7 +78,7 @@ function generateBrowserCacheScript() {
 // Run this in your browser's console to clear all app caches
 
 (async function clearAppCaches() {
-  console.log('🗑️ Clearing browser caches for MyPal Business Admin...');
+  console.log('🗑️ Clearing browser caches for MyPal Iconic Delicacy Order Menu...');
   
   try {
     // Clear all caches
@@ -221,7 +221,7 @@ function main() {
   const args = process.argv.slice(2);
   const command = args[0] || "all";
 
-  console.log("🧹 MyPal Business Admin - Cache Clearing Tool\n");
+  console.log("🧹 MyPal Iconic Delicacy Order Menu - Cache Clearing Tool\n");
 
   switch (command) {
     case "build":

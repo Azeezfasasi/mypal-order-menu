@@ -360,7 +360,7 @@ function createOfflinePage() {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Offline - MyPal Business Admin</title>
+      <title>Offline - MyPal Iconic Delicacy Order Menu</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
         body { 

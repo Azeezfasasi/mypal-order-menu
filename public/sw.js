@@ -1,4 +1,4 @@
-// --- MyPal Business Admin Service Worker ---
+// --- MyPal Iconic Delicacy Order Menu Service Worker ---
 // Single file for caching, offline, API handling, and Firebase messaging
 //
 // Documentation / Policy
@@ -321,7 +321,7 @@ function getCacheMetadata(response) {
 
 function createOfflinePage() {
   return new Response(
-    `<!DOCTYPE html><html><head><title>Offline - MyPal Business Admin</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;padding:50px 20px;background:#f8fafc;color:#334155}.offline-content{max-width:400px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.08)}.logo{width:64px;height:64px;background:#f97316;border-radius:12px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:bold}h1{color:#1e293b;margin-bottom:12px}p{color:#64748b;margin-bottom:24px}button{background:#f97316;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:16px;cursor:pointer}button:hover{background:#ea580c}.version{margin-top:20px;font-size:12px;color:#94a3b8}</style></head><body><div class="offline-content"><div class="logo">MP</div><h1>You're Offline</h1><p>Please check your internet connection and try again.</p><button onclick="window.location.reload()">Retry Connection</button><div class="version">v${CACHE_VERSION}</div></div></body></html>`,
+    `<!DOCTYPE html><html><head><title>Offline - MyPal Iconic Delicacy Order Menu</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;padding:50px 20px;background:#f8fafc;color:#334155}.offline-content{max-width:400px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.08)}.logo{width:64px;height:64px;background:#f97316;border-radius:12px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:bold}h1{color:#1e293b;margin-bottom:12px}p{color:#64748b;margin-bottom:24px}button{background:#f97316;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:16px;cursor:pointer}button:hover{background:#ea580c}.version{margin-top:20px;font-size:12px;color:#94a3b8}</style></head><body><div class="offline-content"><div class="logo">MP</div><h1>You're Offline</h1><p>Please check your internet connection and try again.</p><button onclick="window.location.reload()">Retry Connection</button><div class="version">v${CACHE_VERSION}</div></div></body></html>`,
     {
       status: 503,
       statusText: "Service Unavailable",
