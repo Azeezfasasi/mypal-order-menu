@@ -161,15 +161,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Meal Prep Alert */}
-      <MealPrepAlert
+      {!ordersLoading && !ordersError && (
+        <>
+        {/* Meal Prep Alert */}
+        <MealPrepAlert
           title="Meal prep is time sensitive!"
           description="Keep an eye on countdowns to avoid delays."
         />
 
-      {!ordersLoading && !ordersError && (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <OrdersInProgress orders={orders as any} />
+        </>
       )}
 
     </div>
