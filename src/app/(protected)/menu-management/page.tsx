@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { menuAndOrdersApi } from "@/services/api/fine-din-menu-orders-api";
+import AddMenuItemModal, { MenuItemFormData } from "@/components/menu-management/add-menu-item-modal";
 
 interface MenuItem {
   id: string;
@@ -31,6 +32,7 @@ interface MenuCategory {
 export default function MenuManagementPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const router = useRouter();
 
   const api = menuAndOrdersApi();
@@ -72,6 +74,12 @@ export default function MenuManagementPage() {
     return items;
   }, [allItems, selectedCategory, searchQuery]);
 
+  const handleAddItem = (itemData: MenuItemFormData) => {
+    // TODO: Call API to add item
+    console.log("Add item:", itemData);
+    setIsAddModalOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -97,16 +105,13 @@ export default function MenuManagementPage() {
             placeholder="Search menu item..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 py-6 bg-white rounded-[100px] border border-[#E1E3E7]]"
+            className="pl-10 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
         />
       </div>
 
       {/* Add Item Button */}
       <Button 
-        onClick={() => {
-          // TODO: Open add item modal
-          console.log("Add Item clicked");
-        }}
+        onClick={() => setIsAddModalOpen(true)}
         className="w-auto md:w-full bg-[#FEF2EE] hover:bg-orange-200 border border-[#DB3A0780] rounded-lg text-[14px] font-semibold leading-[145%] text-[#DB3A07] text-center flex items-center justify-center gap-2 mx-auto"
       >
         <Plus className="w-5 h-5 mr-2" />
@@ -254,6 +259,13 @@ export default function MenuManagementPage() {
           </p>
         </div>
       )}
+
+      {/* Add Menu Item Modal */}
+      <AddMenuItemModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddItem}
+      />
     </div>
   );
 }
