@@ -68,15 +68,6 @@ export function OrderListItem({
   riderArrivalTime,
   onClick,
 }: OrderListItemProps) {
-  const statusColors = {
-    Preparing: "text-orange-500",
-    Ready: "text-green-500",
-    Pending: "text-gray-500",
-    "Picked Up": "text-blue-500",
-    Delivered: "text-green-600",
-  };
-
-
   return (
     <div
       onClick={onClick}

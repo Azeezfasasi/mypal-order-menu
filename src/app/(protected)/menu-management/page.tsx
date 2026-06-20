@@ -160,8 +160,16 @@ export default function MenuManagementPage() {
             <p className="text-red-500">Error loading menu items</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No menu items found</p>
+          <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white shadow-sm">
+            <div className="text-center">
+              <div className="text-gray-400 mb-3">
+                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+               </svg>
+             </div>
+              <p className="md:text-sm text-[18px] font-semibold text-gray-700">No menu items found</p>
+              <p className="md:text-xs text-[14px] text-gray-500 mt-1">Try adjusting your filters or search criteria</p>
+            </div>
           </div>
         ) : (
           filteredItems.map((item) => (

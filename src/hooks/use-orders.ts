@@ -23,8 +23,8 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
         setError(null);
         const response = await ordersApi.getOrders(filters);
         
-        // Handle different response formats
-        const ordersList = response.data?.orders || response.orders || response || [];
+        // Handle different response formats - API returns nested data.data
+        const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
         if (isMounted) {
           setOrders(Array.isArray(ordersList) ? ordersList : []);
         }
@@ -52,7 +52,7 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getOrders(filters);
-      const ordersList = response.data?.orders || response.orders || response || [];
+      const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
       setOrders(Array.isArray(ordersList) ? ordersList : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch orders";
@@ -145,7 +145,7 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
         setError(null);
         const response = await ordersApi.getActiveOrders(branchId);
         
-        const ordersList = response.data?.orders || response.orders || response || [];
+        const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
         if (isMounted) {
           setOrders(Array.isArray(ordersList) ? ordersList : []);
         }
@@ -173,7 +173,7 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getActiveOrders(branchId);
-      const ordersList = response.data?.orders || response.orders || response || [];
+      const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
       setOrders(Array.isArray(ordersList) ? ordersList : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch active orders";

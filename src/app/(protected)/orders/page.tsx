@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { StatusFilter, OrderListItem } from "@/components/orders/orders-filters";
 import { useOrders } from "@/hooks/use-orders";
+import { useAuthStore } from "@/stores/auth-store";
 import { Order } from "@/services/api/orders";
 import { AlertCircle, Loader } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,12 +14,28 @@ export default function OrdersPage() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const business = useAuthStore((state) => state.business);
 
-  const { orders: apiOrders, loading, error } = useOrders({
+  // Memoize the filters object to prevent infinite API calls
+  const orderFilters = useMemo(() => ({
     limit: 50,
     sort: "createdAt",
-    order: "DESC"
-  });
+    order: "DESC" as const
+  }), []);
+
+  const { orders: apiOrders, loading, error } = useOrders(orderFilters);
+
+  // Check if error is an authorization error
+  const isAuthorizationError = (error: string | null) => {
+    return error && (error.includes("not authorized") || error.includes("403"));
+  };
+
+  const getAuthErrorMessage = (error: string | null) => {
+    if (!error) return null;
+    const match = error.match(/Required:\s*(.+?)(?:,|$)/);
+    const required = match ? match[1].trim() : "Iconic Delicacies";
+    return `You're signed in with the wrong account. Your current account (${business?.category?.name || "this account"}) doesn't have access to this section. Please sign in or switch to an account that has access to ${required}.`;
+  };
 
   // Only use API orders - no fallback to mock
   const allOrders = apiOrders;
@@ -50,11 +67,18 @@ export default function OrdersPage() {
     <div className="space-y-6 bg-linear-to-r from-[#B2D5FF]/10 to-blue-[#B2D5FF]/10 px-0">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+        <div className={`border rounded-lg p-4 flex gap-3 ${isAuthorizationError(error) ? 'bg-yellow-50 border-yellow-400' : 'bg-red-50 border-red-200'}`}>
+          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAuthorizationError(error) ? 'text-yellow-600' : 'text-red-600'}`} />
           <div>
-            <p className="text-sm font-semibold text-red-800">Failed to load orders</p>
-            <p className="text-xs text-red-700 mt-1">{error}</p>
+            <p className={`text-sm font-semibold ${isAuthorizationError(error) ? 'text-yellow-800' : 'text-red-800'}`}>
+              {isAuthorizationError(error) ? 'Account Access Issue' : 'Failed to load orders'}
+            </p>
+            <p className={`md:text-xs text-base ${isAuthorizationError(error) ? 'text-yellow-700' : 'text-red-700'} mt-1`}>
+              {isAuthorizationError(error) 
+                ? getAuthErrorMessage(error)
+                : error
+              }
+            </p>
           </div>
         </div>
       )}
@@ -143,14 +167,20 @@ export default function OrdersPage() {
           <div className="flex items-center justify-center py-12">
             <div className="flex flex-col items-center gap-3">
               <Loader className="w-8 h-8 animate-spin text-[#DB3A07]" />
-              <p className="text-sm text-gray-600">Loading orders...</p>
+              <p className="md:text-sm text-[18px] text-gray-600">Loading orders...</p>
+              <p className="md:text-xs text-[14px] text-gray-500">If this takes too long, please check your account access or try refreshing</p>
             </div>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white shadow-sm">
             <div className="text-center">
-              <p className="text-sm font-semibold text-gray-700">No orders found</p>
-              <p className="text-xs text-gray-500 mt-1">Try adjusting your filters or search criteria</p>
+              <div className="text-gray-400 mb-3">
+                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+               </svg>
+             </div>
+              <p className="md:text-sm text-[18px] font-semibold text-gray-700">No orders found</p>
+              <p className="md:text-xs text-[14px] text-gray-500 mt-1">Try adjusting your filters or search criteria</p>
             </div>
           </div>
         ) : (
