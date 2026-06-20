@@ -1,14 +1,26 @@
 "use client";
 
+import AccountSwitcher from "@/components/account-switcher/AccountSwitcher";
 import { Button } from "@/components/ui/button";
-import { Menu, MessageSquareText } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { pickBusiness } from "@/lib/utils";
+import { BusinessContextApi } from "@/services/api/business-context-api";
+import { getAuthActions, TokenType, useAuthStore } from "@/stores/auth-store";
+import { Bell, Menu, MessageCircleMore, Search } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import MessagingModal from "../messaging/messaging-modal";
 import { BusinessMessagingApi } from "@/services/api/business-messaging-api";
+import { useQueryClient } from "@tanstack/react-query";
 import { NotificationApi } from "@/services/api/notification-api";
-import { Bell } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -16,17 +28,98 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
+  const queryClient = useQueryClient();
   const pathname = usePathname();
-  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const router = useRouter();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
 
   const { data: unreadData } = NotificationApi.useGetUnreadCount();
+
+  // Get data from auth store
+  const business = useAuthStore((state) => state.business);
+  const actions = useAuthStore((state) => state.actions);
+
+  // Business switching mutation
+  const { mutateAsync: switchBusiness } =
+    BusinessContextApi.useSwitchBusiness();
+
+  // Map linked businesses to account items, excluding the current business
+  const linkedAccounts = business?.linkedBusinesses
+    ?.filter((linkedBiz) => linkedBiz.id !== business.id)
+    .map((linkedBiz) => ({
+      id: linkedBiz.id,
+      name: linkedBiz.business_name,
+      subtitle: linkedBiz.category?.name || undefined,
+      imageUrl: linkedBiz.image_url || null,
+    }));
+
+  console.log("linked business", business, business?.linkedBusinesses);
+
+  const searchParams = useSearchParams();
+
+  const orderId = searchParams.get("orderId");
+  const category = searchParams.get("category");
+
+  const rawBusinessCategory = business?.category?.business_type ?? "";
+
+  // Handle business account switching
+  const handleBusinessSwitch = useCallback(async (businessId: string) => {
+    try {
+      const res = await switchBusiness({ businessId });
+      const returned = res?.data;
+      if (returned?.business && returned?.access_token) {
+        const minimal = pickBusiness(returned.business, returned.access_token);
+        // Add linked businesses to the minimal business object
+        if (returned.linkedBusinesses) {
+          minimal.linkedBusinesses = returned.linkedBusinesses;
+        }
+        // Set session as authenticated with new business
+        getAuthActions().setSession(
+          returned.access_token,
+          TokenType.AUTHENTICATED,
+          minimal,
+        );
+        toast.success("Switched business successfully");
+        queryClient.removeQueries();
+        if (category && orderId) {
+          window.location.href = `/dashboard?category=${category}&orderId=${orderId}`;
+        } else {
+          window.location.href = "/dashboard";
+        }
+      } else {
+        toast.error("Failed to switch business");
+      }
+    } catch (err) {
+      console.error("Switch business error", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to switch business";
+      toast.error(errorMessage);
+    }
+  }, [switchBusiness, queryClient, category, orderId]);
+
+  useEffect(() => {
+    // toast.success(`CATEGORY: ${category}, BUSINESS CATEGORY: ${rawBusinessCategory}`)
+    if (!category || !rawBusinessCategory) return;
+    if (rawBusinessCategory === category) {
+      queryClient.invalidateQueries();
+      return;
+    }
+    // toast.error(`Please switch to ${category} category to view order details`);
+    const targetBusinessId = linkedAccounts?.find((a) => a.subtitle === category)?.id;
+    if (targetBusinessId) {
+      handleBusinessSwitch(targetBusinessId)
+    } else {
+      toast.error(`Category doesn't exist for this business.`);
+    };
+
+  }, [category, rawBusinessCategory, linkedAccounts, handleBusinessSwitch, queryClient])
 
   // Get page title from pathname
   const getPageTitle = () => {
     const path = pathname.split("/").pop() || "dashboard";
 
-    if (path === "dashboard") return "Overview";
+    if (path === "dashboard") return "Menu Management";
 
     return path
       .split("-")
@@ -50,6 +143,15 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
     const path = pathname.split("/").pop() || "overview";
     return descriptions[path] || "Manage your Order Menu operations";
+  };
+
+  const handleLogout = () => {
+    try {
+      actions.clearSession();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    router.replace("/login");
   };
 
   const handleCloseMessagingModal = useCallback(() => {
@@ -94,8 +196,42 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       {/* Right side - Actions */}
-      <div className="flex items-center md:gap-3 gap-3">
+      <div className="flex items-center lg:gap-1 gap-2">
+        {/* Mobile Search Sheet */}
+        <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="hidden  h-9 w-9">
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="top" className="h-[200px]">
+            <SheetHeader>
+              <SheetTitle>Search</SheetTitle>
+            </SheetHeader>
+            <div className="relative mt-4">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="w-full pl-8"
+                autoFocus
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
 
+        {/* Business switcher */}
+        <div className="md:mr-2 mr-1">
+          <AccountSwitcher
+            accounts={linkedAccounts}
+            onSwitch={handleBusinessSwitch}
+            onSignOut={handleLogout}
+          />
+        </div>
+
+      {/* Notification and message icon */}
+      <div className="flex items-center md:gap-3 gap-4">
         <button
           onClick={() => router.push("/notifications")}
           className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative z-0"
@@ -108,19 +244,19 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           )}
         </button>
 
-        {/* Message section */}
+        {/* Message icon */}
         <Button
           onClick={() => setIsMessagingOpen(true)}
           variant="ghost"
           // size="icon"
-          className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600"
+          className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative z-0"
         >
           {totalUnreadCount! > 0 &&
             <div className="absolute top-1 right-1 text-[10px] bg-[#FF6900] text-white flex items-center justify-center rounded-full h-4 w-4 ml-2">
               {totalUnreadCount}
             </div>
           }
-          <MessageSquareText size={18} className="text-red-600]" />
+          <MessageCircleMore className="w-5 h-5" />
           <span className="sr-only">Messages</span>
         </Button>
 
@@ -129,6 +265,12 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             onClose={handleCloseMessagingModal}
           />}
 
+      </div>
+
+        {isMessagingOpen &&
+          <MessagingModal
+            onClose={handleCloseMessagingModal}
+          />}
       </div>
     </header>
   );

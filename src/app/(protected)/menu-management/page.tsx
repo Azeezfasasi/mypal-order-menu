@@ -92,20 +92,20 @@ export default function MenuManagementPage() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Image
+      <div className="">
+        {/* <Image
             width={20}
             height={20}
             src="/images/search.svg"
             alt="Search Icon"
             className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-        />
+        /> */}
         <Input
             type="text"
             placeholder="Search menu item..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
+            className="w-1/2 md:w-full pl-5 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
         />
       </div>
 

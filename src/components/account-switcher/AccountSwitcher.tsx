@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/stores/auth-store";
-import { ChevronRight, LogOut, Plus, Repeat } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "../ui/button";
@@ -77,7 +77,7 @@ export default function AccountSwitcher({
           <Button
             variant="ghost"
             aria-label="Account menu"
-            className="flex items-center gap-2 rounded-full p-1 hover:opacity-90 focus:outline-none"
+            className="flex items-center gap-2 rounded-full p-1 hover:opacity-90 focus:outline-none border border-orange-200 w-10 h-10"
           >
             <Avatar className="h-9 w-9">
               <AvatarImage
@@ -111,7 +111,7 @@ export default function AccountSwitcher({
                   title="Account switcher"
                   className="rounded-md p-1 hover:bg-accent"
                 >
-                  <Repeat className="h-4 w-4" />
+                  {/* <Repeat className="h-4 w-4" /> */}
                 </button>
               </div>
             </div>
@@ -148,12 +148,12 @@ export default function AccountSwitcher({
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onSelect={() => setShowAddCategory(true)}>
+          {/* <DropdownMenuItem onSelect={() => setShowAddCategory(true)}>
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               <div className="text-sm">Add account</div>
             </div>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
           <DropdownMenuItem onSelect={handleSignOut}>
             <div className="flex items-center gap-2 text-destructive">

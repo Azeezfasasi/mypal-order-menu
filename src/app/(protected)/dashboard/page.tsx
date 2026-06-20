@@ -15,9 +15,19 @@ export default function DashboardPage() {
   const { stats, loading: statsLoading, error: statsError } = useOrderStats();
   const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders();
   const business = useAuthStore((state) => state.business);
-  // const router = useRouter();
-  
-  // const { data: unreadData } = NotificationApi.useGetUnreadCount();
+
+  // Check if error is an authorization error
+  const isAuthorizationError = (error: string | null) => {
+    return error && (error.includes("not authorized") || error.includes("403"));
+  };
+
+  const getAuthErrorMessage = (error: string | null) => {
+    if (!error) return null;
+    // Try to extract the required business types from the error message
+    const match = error.match(/Required:\s*(.+?)(?:,|$)/);
+    const required = match ? match[1].trim() : "Iconic Delicacies";
+    return `You're signed in with the wrong account. Your current account (${business?.category?.name || "this account"}) doesn't have access to this section. Please sign in or switch to an account that has access to ${required}.`;
+  };
 
   return (
     <div className="space-y-6 px-0">
@@ -34,12 +44,17 @@ export default function DashboardPage() {
 
       {/* Error Messages */}
       {(statsError || ordersError) && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+        <div className={`border rounded-lg p-4 flex gap-3 ${isAuthorizationError(statsError || ordersError) ? 'bg-yellow-50 border-yellow-400' : 'bg-red-50 border-red-200'}`}>
+          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-600' : 'text-red-600'}`} />
           <div>
-            <p className="text-sm font-semibold text-red-800">API Error</p>
-            <p className="text-xs text-red-700 mt-1">
-              {statsError || ordersError}
+            <p className={`text-sm font-semibold ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-800' : 'text-red-800'}`}>
+              {isAuthorizationError(statsError || ordersError) ? 'Account Access Issue' : 'API Error'}
+            </p>
+            <p className={`md:text-xs text-base ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-700' : 'text-red-700'} mt-1`}>
+              {isAuthorizationError(statsError || ordersError) 
+                ? getAuthErrorMessage(statsError || ordersError)
+                : (statsError || ordersError)
+              }
             </p>
           </div>
         </div>
