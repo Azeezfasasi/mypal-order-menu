@@ -245,7 +245,7 @@ export default function MenuManagementPage() {
               // TODO: Open add item modal
               toast.info("Add item modal - to be implemented");
             }}
-            className="w-full bg-[#FEF2EE] hover:bg-orange-100 border border-[#DB3A0780] rounded-lg text-[14px] font-semibold text-[#DB3A07] py-3 flex items-center justify-center gap-2"
+            className="hidden w-full bg-[#FEF2EE] hover:bg-orange-100 border border-[#DB3A0780] rounded-lg text-[14px] font-semibold text-[#DB3A07] py-3 dflex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Add Item
