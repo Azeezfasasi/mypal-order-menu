@@ -56,22 +56,6 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        {/* <div className="flex gap-2">
-          <button
-            onClick={() => router.push("/notifications")}
-            className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600 hover:bg-orange-100 transition-colors relative z-0"
-          >
-            <Bell className="w-5 h-5 z-0" />
-            {unreadData && unreadData.count > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                {unreadData.count > 99 ? "99+" : unreadData.count}
-              </span>
-            )}
-          </button>
-          <div className="bg-[#FEF2EE] rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold text-red-600">
-            <MessageSquareText className="w-5 h-5" />
-          </div>
-        </div> */}
       </div>
 
       {/* Live Overview */}
@@ -80,18 +64,18 @@ export default function DashboardPage() {
           <h2 className="text-[20px] leading-6.5 font-extrabold text-[#031927] mb-4">Live Overview</h2>
 
           {/* Search Box */}
-          <div className="relative mb-4">
-            <Image
+          <div className="srelative mb-4 z-0">
+            {/* <Image
               width={20}
               height={20}
               src="/images/search.svg"
               alt="Search Icon"
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-            />
+            /> */}
             <Input
-              type="text"
+              type="search"
               placeholder="Search order id, customer name, item name..."
-              className="pl-10 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
+              className="w-1/2 md:w-full pl-4 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

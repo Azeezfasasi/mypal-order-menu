@@ -144,8 +144,8 @@ const MessagingModal = ({ onClose }: MessagingModalProps) => {
     const [openSendFirstMessage, setOpenSendFirstMessage] = useState(false);
 
     return (
-        <div onClick={onClose} className='fixed top-0 left-0 w-screen h-dvh'>
-            <div onClick={(e) => e.stopPropagation()} className='fixed h-dvh p-1 bg-white right-0 top-0 w-full max-w-md shadow-md'>
+        <div onClick={onClose} className='fixed top-0 left-0 w-screen h-dvh bg-black/30 flex items-center justify-end z-[9999]'>
+            <div onClick={(e) => e.stopPropagation()} className='fixed h-dvh p-1 bg-white right-0 top-0 w-full max-w-md shadow-md z-[10000]'>
                 <div className='relative bg-[#142545] text-white p-3 h-[120px] rounded-[3px] flex flex-col justify-between'>
                     <h3 className='font-sora font-semibold text-[27px] text-[#AEB6C6]'>My<span className='text-[#923223]'>Pal</span></h3>
                     <div className=''>
@@ -178,7 +178,7 @@ const MessagingModal = ({ onClose }: MessagingModalProps) => {
                                         const isMe = msg.senderName !== 'Super Admin';
 
                                         return (
-                                            <div key={msg.id} className={`flex items-start ${isMe ? 'justify-end' : 'justify-start'} gap-2`}>
+                                            <div key={msg.id} className={`flex items-start z-50 ${isMe ? 'justify-end' : 'justify-start'} gap-2`}>
                                                 <div className=' flex items-end gap-2'>
                                                     <div>
                                                         <div className={`p-3 ${isMe ? 'bg-[#1671D9]' : 'bg-[#F9FAFB]'} ${isMe ? 'text-white' : 'text-black'} font-manrope rounded-[8px] text-[13px]`}>

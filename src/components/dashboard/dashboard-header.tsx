@@ -108,7 +108,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           )}
         </button>
 
-        {/* QR Code - Hidden on mobile */}
+        {/* Message section */}
         <Button
           onClick={() => setIsMessagingOpen(true)}
           variant="ghost"
