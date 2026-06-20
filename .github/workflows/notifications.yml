@@ -1,35 +1,35 @@
-name: Deployment Notifications
+# name: Deployment Notifications
 
-on:
-  workflow_run:
-    workflows: ["Business Admin CI/CD"]
-    types:
-      - completed
+# on:
+#   workflow_run:
+#     workflows: ["Business Admin CI/CD"]
+#     types:
+#       - completed
 
-jobs:
-  notify:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion != 'skipped' }}
+# jobs:
+#   notify:
+#     runs-on: ubuntu-latest
+#     if: ${{ github.event.workflow_run.conclusion != 'skipped' }}
 
-    steps:
-      # Send email notification if deployment fails
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Backend Deployment Failed - ${{ github.repository }}"
-          to: ${{ secrets.NOTIFICATION_EMAIL }}
-          from: "CI/CD Pipeline <${{ secrets.EMAIL_USERNAME }}>"
-          body: |
-            Backend deployment failed for ${{ github.repository }}
+#     steps:
+#       # Send email notification if deployment fails
+#       - name: Send email notification
+#         uses: dawidd6/action-send-mail@v3
+#         if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+#         with:
+#           server_address: smtp.gmail.com
+#           server_port: 587
+#           username: ${{ secrets.EMAIL_USERNAME }}
+#           password: ${{ secrets.EMAIL_PASSWORD }}
+#           subject: "Backend Deployment Failed - ${{ github.repository }}"
+#           to: ${{ secrets.NOTIFICATION_EMAIL }}
+#           from: "CI/CD Pipeline <${{ secrets.EMAIL_USERNAME }}>"
+#           body: |
+#             Backend deployment failed for ${{ github.repository }}
 
-            Details:
-            - Branch: ${{ github.event.workflow_run.head_branch }}
-            - Workflow: ${{ github.event.workflow_run.name }}
-            - Run URL: ${{ github.event.workflow_run.html_url }}
+#             Details:
+#             - Branch: ${{ github.event.workflow_run.head_branch }}
+#             - Workflow: ${{ github.event.workflow_run.name }}
+#             - Run URL: ${{ github.event.workflow_run.html_url }}
 
-            Please check the logs for more details.
+#             Please check the logs for more details.

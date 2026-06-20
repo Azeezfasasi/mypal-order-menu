@@ -1,296 +1,296 @@
-name: Business Admin CI/CD
+# name: Business Admin CI/CD
 
-on:
-  push:
-    branches: [main, dev]
-  workflow_dispatch:
-    inputs:
-      action:
-        description: "Action to perform"
-        required: true
-        type: choice
-        options: [deploy, rollback]
-        default: deploy
+# on:
+#   push:
+#     branches: [main, dev]
+#   workflow_dispatch:
+#     inputs:
+#       action:
+#         description: "Action to perform"
+#         required: true
+#         type: choice
+#         options: [deploy, rollback]
+#         default: deploy
 
-env:
-  NODE_VERSION: "20"
-  DEPLOY_USER: "deployer"
-  DEPLOY_PATH: "/var/www/mypal/frontend/business-admin"
-  APP_PORT: "4100"
-  PM2_APP_NAME: "business-admin"
-  SERVER_HOST: ${{ secrets.SERVER_HOST }}
-  SERVER_PORT: ${{ secrets.SERVER_PORT }}
+# env:
+#   NODE_VERSION: "20"
+#   DEPLOY_USER: "deployer"
+#   DEPLOY_PATH: "/var/www/mypal/frontend/business-admin"
+#   APP_PORT: "4100"
+#   PM2_APP_NAME: "business-admin"
+#   SERVER_HOST: ${{ secrets.SERVER_HOST }}
+#   SERVER_PORT: ${{ secrets.SERVER_PORT }}
 
-jobs:
-  # ─────────────────────────────────────────────
-  # Auto-merge dev → main
-  # ─────────────────────────────────────────────
-  merge-test-deploy:
-    name: Auto-merge to Main
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[merge-to-main]')
+# jobs:
+#   # ─────────────────────────────────────────────
+#   # Auto-merge dev → main
+#   # ─────────────────────────────────────────────
+#   merge-test-deploy:
+#     name: Auto-merge to Main
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[merge-to-main]')
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+#           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10
+#       - name: Setup pnpm
+#         uses: pnpm/action-setup@v2
+#         with:
+#           version: 10
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-
+#       - name: Cache dependencies
+#         uses: actions/cache@v4
+#         with:
+#           path: ~/.pnpm-store
+#           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+#           restore-keys: ${{ runner.os }}-pnpm-
 
-      - name: Configure Git
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
+#       - name: Configure Git
+#         run: |
+#           git config user.name "GitHub Actions Bot"
+#           git config user.email "actions@github.com"
 
-      - name: Merge, build & test
-        run: |
-          git checkout main
-          git merge --no-ff dev -m "Auto-merge: dev → main [skip ci]"
-          pnpm install --no-frozen-lockfile
-          pnpm run build
+#       - name: Merge, build & test
+#         run: |
+#           git checkout main
+#           git merge --no-ff dev -m "Auto-merge: dev → main [skip ci]"
+#           pnpm install --no-frozen-lockfile
+#           pnpm run build
 
-      - name: Smoke test
-        run: |
-          cd .next/standalone && node server.js &
-          PID=$!
-          for i in {1..30}; do
-            if curl -f http://localhost:3000 >/dev/null 2>&1; then
-              kill $PID
-              exit 0
-            fi
-            sleep 1
-          done
-          kill $PID
-          echo "❌ Server failed to start"
-          exit 1
+#       - name: Smoke test
+#         run: |
+#           cd .next/standalone && node server.js &
+#           PID=$!
+#           for i in {1..30}; do
+#             if curl -f http://localhost:3000 >/dev/null 2>&1; then
+#               kill $PID
+#               exit 0
+#             fi
+#             sleep 1
+#           done
+#           kill $PID
+#           echo "❌ Server failed to start"
+#           exit 1
 
-      - name: Push to main
-        run: git push origin main
+#       - name: Push to main
+#         run: git push origin main
 
-  # ─────────────────────────────────────────────
-  # Deploy to Production
-  # ─────────────────────────────────────────────
-  deploy:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    if: |
-      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy')
+#   # ─────────────────────────────────────────────
+#   # Deploy to Production
+#   # ─────────────────────────────────────────────
+#   deploy:
+#     name: Deploy to Production
+#     runs-on: ubuntu-latest
+#     if: |
+#       (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+#       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy')
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10
+#       - name: Setup pnpm
+#         uses: pnpm/action-setup@v2
+#         with:
+#           version: 10
 
-      - name: Cache dependencies & build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pnpm-store
-            ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            ${{ runner.os }}-nextjs-
+#       - name: Cache dependencies & build
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             ~/.pnpm-store
+#             ${{ github.workspace }}/.next/cache
+#           key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+#           restore-keys: |
+#             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+#             ${{ runner.os }}-nextjs-
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+#       - name: Install dependencies
+#         run: pnpm install --no-frozen-lockfile
 
-      - name: Create environment file
-        run: |
-          cat > .env.production << EOF
-          NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
-          NEXT_PUBLIC_APP_ENV=production
-          NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}
-          NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
-          NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
-          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-          NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-          NODE_ENV=production
-          PORT=${{ env.APP_PORT }}
-          NEXT_TELEMETRY_DISABLED=1
-          EOF
+#       - name: Create environment file
+#         run: |
+#           cat > .env.production << EOF
+#           NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+#           NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+#           NEXT_PUBLIC_APP_ENV=production
+#           NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}
+#           NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+#           NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
+#           NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+#           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+#           NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+#           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+#           NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+#           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+#           NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+#           NODE_ENV=production
+#           PORT=${{ env.APP_PORT }}
+#           NEXT_TELEMETRY_DISABLED=1
+#           EOF
 
-      - name: Build application
-        run: NODE_OPTIONS="--max_old_space_size=4096"  pnpm run build
-        env:
-          NODE_ENV: production
+#       - name: Build application
+#         run: NODE_OPTIONS="--max_old_space_size=4096"  pnpm run build
+#         env:
+#           NODE_ENV: production
 
-      # ✅ FIX: secrets context is not allowed in `if:` conditions.
-      # Map the secret to an env var first, then check env context instead.
-      - name: Create Sentry release and upload sourcemaps
-        if: env.SENTRY_AUTH_TOKEN != ''
-        uses: getsentry/action-release@v1
-        with:
-          environment: production
-          version: ${{ github.sha }}
-          projects: business-admin
-          sourcemaps: .next/static/chunks
-          ignore_missing: true
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: mypal-hospitality-innovation-s
+#       # ✅ FIX: secrets context is not allowed in `if:` conditions.
+#       # Map the secret to an env var first, then check env context instead.
+#       - name: Create Sentry release and upload sourcemaps
+#         if: env.SENTRY_AUTH_TOKEN != ''
+#         uses: getsentry/action-release@v1
+#         with:
+#           environment: production
+#           version: ${{ github.sha }}
+#           projects: business-admin
+#           sourcemaps: .next/static/chunks
+#           ignore_missing: true
+#         env:
+#           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+#           SENTRY_ORG: mypal-hospitality-innovation-s
 
-      - name: Create deployment package
-        run: |
-          cp -r public .next/standalone/
-          cp -r .next/static .next/standalone/.next/
-          mkdir -p deploy-temp
-          cp -r .next/standalone/. deploy-temp/
-          cp ecosystem.config.js deploy-temp/ || echo "No ecosystem file found locally"
-          cp scripts/start-pm2.sh deploy-temp/ || echo "No start script found locally"
-          cp .env.production deploy-temp/
-          cd deploy-temp
-          tar -czf ../deploy-package.tar.gz .
-          cd ..
-          rm -rf deploy-temp
+#       - name: Create deployment package
+#         run: |
+#           cp -r public .next/standalone/
+#           cp -r .next/static .next/standalone/.next/
+#           mkdir -p deploy-temp
+#           cp -r .next/standalone/. deploy-temp/
+#           cp ecosystem.config.js deploy-temp/ || echo "No ecosystem file found locally"
+#           cp scripts/start-pm2.sh deploy-temp/ || echo "No start script found locally"
+#           cp .env.production deploy-temp/
+#           cd deploy-temp
+#           tar -czf ../deploy-package.tar.gz .
+#           cd ..
+#           rm -rf deploy-temp
 
-      - name: Upload package
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ env.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
-          source: "deploy-package.tar.gz"
-          target: "/home/deployer/deploy-temp/"
-          overwrite: true
+#       - name: Upload package
+#         uses: appleboy/scp-action@v0.1.7
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ env.DEPLOY_USER }}
+#           key: ${{ secrets.DEPLOY_KEY }}
+#           port: ${{ secrets.SERVER_PORT }}
+#           source: "deploy-package.tar.gz"
+#           target: "/home/deployer/deploy-temp/"
+#           overwrite: true
 
-      - name: Remote deploy
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ env.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
-          script: |
-            set -e
-            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
-            PM2_APP_NAME="${{ env.PM2_APP_NAME }}"
-            APP_PORT="${{ env.APP_PORT }}"
-            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-            NEW_DIR="${DEPLOY_PATH}/deploy_${TIMESTAMP}"
-            TAR_PATH="/home/deployer/deploy-temp/deploy-package.tar.gz"
+#       - name: Remote deploy
+#         uses: appleboy/ssh-action@v0.1.7
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ env.DEPLOY_USER }}
+#           key: ${{ secrets.DEPLOY_KEY }}
+#           port: ${{ secrets.SERVER_PORT }}
+#           script: |
+#             set -e
+#             DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+#             PM2_APP_NAME="${{ env.PM2_APP_NAME }}"
+#             APP_PORT="${{ env.APP_PORT }}"
+#             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+#             NEW_DIR="${DEPLOY_PATH}/deploy_${TIMESTAMP}"
+#             TAR_PATH="/home/deployer/deploy-temp/deploy-package.tar.gz"
 
-            echo "🚀 Starting deployment to ${NEW_DIR}..."
-            mkdir -p ${NEW_DIR}
-            tar -xzf "${TAR_PATH}" -C ${NEW_DIR}
-            rm -f "${TAR_PATH}"
+#             echo "🚀 Starting deployment to ${NEW_DIR}..."
+#             mkdir -p ${NEW_DIR}
+#             tar -xzf "${TAR_PATH}" -C ${NEW_DIR}
+#             rm -f "${TAR_PATH}"
 
-            cd ${NEW_DIR}
-            cp .env.production .env.local
-            echo "PORT=${APP_PORT}" >> .env.local
-            echo "HOSTNAME=0.0.0.0" >> .env.local
+#             cd ${NEW_DIR}
+#             cp .env.production .env.local
+#             echo "PORT=${APP_PORT}" >> .env.local
+#             echo "HOSTNAME=0.0.0.0" >> .env.local
 
-            # PM2 Lifecycle
-            pm2 delete "${PM2_APP_NAME}-new" 2>/dev/null || true
-            NODE_ENV=production PORT=${APP_PORT} HOSTNAME=0.0.0.0 \
-              pm2 start server.js --name "${PM2_APP_NAME}-new" -i 1 --max-memory-restart 512M
+#             # PM2 Lifecycle
+#             pm2 delete "${PM2_APP_NAME}-new" 2>/dev/null || true
+#             NODE_ENV=production PORT=${APP_PORT} HOSTNAME=0.0.0.0 \
+#               pm2 start server.js --name "${PM2_APP_NAME}-new" -i 1 --max-memory-restart 512M
 
-            echo "⏳ Waiting for health check..."
-            sleep 10
-            if curl -fs http://localhost:${APP_PORT} >/dev/null 2>&1; then
-              echo "✅ Health check passed"
-              pm2 delete ${PM2_APP_NAME} 2>/dev/null || true
-              pm2 restart "${PM2_APP_NAME}-new" --name ${PM2_APP_NAME}
-              ln -sf ${NEW_DIR} ${DEPLOY_PATH}/current
-              pm2 save --force
-              # Clean up old releases (keep last 3)
-              cd ${DEPLOY_PATH} && ls -dt deploy_* | tail -n +4 | xargs -r rm -rf || true
-              echo "🎉 Deployment Success!"
-            else
-              echo "❌ Health check failed"
-              pm2 delete "${PM2_APP_NAME}-new"
-              exit 1
-            fi
+#             echo "⏳ Waiting for health check..."
+#             sleep 10
+#             if curl -fs http://localhost:${APP_PORT} >/dev/null 2>&1; then
+#               echo "✅ Health check passed"
+#               pm2 delete ${PM2_APP_NAME} 2>/dev/null || true
+#               pm2 restart "${PM2_APP_NAME}-new" --name ${PM2_APP_NAME}
+#               ln -sf ${NEW_DIR} ${DEPLOY_PATH}/current
+#               pm2 save --force
+#               # Clean up old releases (keep last 3)
+#               cd ${DEPLOY_PATH} && ls -dt deploy_* | tail -n +4 | xargs -r rm -rf || true
+#               echo "🎉 Deployment Success!"
+#             else
+#               echo "❌ Health check failed"
+#               pm2 delete "${PM2_APP_NAME}-new"
+#               exit 1
+#             fi
 
-  # ─────────────────────────────────────────────
-  # Rollback
-  # ─────────────────────────────────────────────
-  rollback:
-    name: Rollback
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback'
+#   # ─────────────────────────────────────────────
+#   # Rollback
+#   # ─────────────────────────────────────────────
+#   rollback:
+#     name: Rollback
+#     runs-on: ubuntu-latest
+#     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback'
 
-    steps:
-      - name: Rollback via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ env.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
-          script: |
-            set -e
-            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
-            PM2_APP_NAME="${{ env.PM2_APP_NAME }}"
-            APP_PORT="${{ env.APP_PORT }}"
+#     steps:
+#       - name: Rollback via SSH
+#         uses: appleboy/ssh-action@v0.1.7
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ env.DEPLOY_USER }}
+#           key: ${{ secrets.DEPLOY_KEY }}
+#           port: ${{ secrets.SERVER_PORT }}
+#           script: |
+#             set -e
+#             DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+#             PM2_APP_NAME="${{ env.PM2_APP_NAME }}"
+#             APP_PORT="${{ env.APP_PORT }}"
 
-            echo "🔁 Starting rollback..."
+#             echo "🔁 Starting rollback..."
 
-            # Find the second most recent deploy (current is the latest)
-            CURRENT=$(readlink -f ${DEPLOY_PATH}/current || echo "")
-            PREV_DIR=$(ls -dt ${DEPLOY_PATH}/deploy_* 2>/dev/null | grep -v "^${CURRENT}$" | head -n 1)
+#             # Find the second most recent deploy (current is the latest)
+#             CURRENT=$(readlink -f ${DEPLOY_PATH}/current || echo "")
+#             PREV_DIR=$(ls -dt ${DEPLOY_PATH}/deploy_* 2>/dev/null | grep -v "^${CURRENT}$" | head -n 1)
 
-            if [ -z "${PREV_DIR}" ]; then
-              echo "❌ No previous release found to roll back to."
-              exit 1
-            fi
+#             if [ -z "${PREV_DIR}" ]; then
+#               echo "❌ No previous release found to roll back to."
+#               exit 1
+#             fi
 
-            echo "⏪ Rolling back to: ${PREV_DIR}"
+#             echo "⏪ Rolling back to: ${PREV_DIR}"
 
-            cd ${PREV_DIR}
+#             cd ${PREV_DIR}
 
-            # Start previous release as -rollback instance
-            pm2 delete "${PM2_APP_NAME}-rollback" 2>/dev/null || true
-            NODE_ENV=production PORT=${APP_PORT} HOSTNAME=0.0.0.0 \
-              pm2 start server.js --name "${PM2_APP_NAME}-rollback" -i 1 --max-memory-restart 512M
+#             # Start previous release as -rollback instance
+#             pm2 delete "${PM2_APP_NAME}-rollback" 2>/dev/null || true
+#             NODE_ENV=production PORT=${APP_PORT} HOSTNAME=0.0.0.0 \
+#               pm2 start server.js --name "${PM2_APP_NAME}-rollback" -i 1 --max-memory-restart 512M
 
-            echo "⏳ Waiting for health check..."
-            sleep 10
-            if curl -fs http://localhost:${APP_PORT} >/dev/null 2>&1; then
-              echo "✅ Rollback health check passed"
-              pm2 delete ${PM2_APP_NAME} 2>/dev/null || true
-              pm2 restart "${PM2_APP_NAME}-rollback" --name ${PM2_APP_NAME}
-              ln -sf ${PREV_DIR} ${DEPLOY_PATH}/current
-              pm2 save --force
-              echo "🎉 Rollback successful to ${PREV_DIR}!"
-            else
-              echo "❌ Rollback health check failed"
-              pm2 delete "${PM2_APP_NAME}-rollback"
-              exit 1
-            fi
+#             echo "⏳ Waiting for health check..."
+#             sleep 10
+#             if curl -fs http://localhost:${APP_PORT} >/dev/null 2>&1; then
+#               echo "✅ Rollback health check passed"
+#               pm2 delete ${PM2_APP_NAME} 2>/dev/null || true
+#               pm2 restart "${PM2_APP_NAME}-rollback" --name ${PM2_APP_NAME}
+#               ln -sf ${PREV_DIR} ${DEPLOY_PATH}/current
+#               pm2 save --force
+#               echo "🎉 Rollback successful to ${PREV_DIR}!"
+#             else
+#               echo "❌ Rollback health check failed"
+#               pm2 delete "${PM2_APP_NAME}-rollback"
+#               exit 1
+#             fi
