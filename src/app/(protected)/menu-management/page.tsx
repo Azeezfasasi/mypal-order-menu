@@ -6,9 +6,10 @@ import Loader from "@/components/shared/loading-spinner";
 import { ServiceOfferingApi } from "@/services/api/business-service-menu-offerings";
 import { toast } from "sonner";
 import Image from "next/image";
-import { AlertCircle, Search, Plus, Trash } from "lucide-react";
+import { AlertCircle, Search, Plus, Pencil, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import EditMenuItemModal from "@/components/menu-management/edit-menu-item-modal";
 
 interface MenuItem {
   id: string;
@@ -19,6 +20,14 @@ interface MenuItem {
   image_urls?: string[];
   stock_quantity?: number;
   is_available?: boolean;
+  mealDetail?: {
+    mealType?: string;
+    cuisine?: string;
+    dish?: string;
+    servingFormat?: string;
+    preparationTime?: string;
+  };
+  quantityOptions?: Array<{ label: string; price: number }>;
 }
 
 interface Category {
@@ -37,6 +46,10 @@ export default function MenuManagementPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [itemAvailability, setItemAvailability] = useState<Record<string, boolean>>({});
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedItem, setSelectedItem] = useState<FlattenedItem | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showSortMenu, setShowSortMenu] = useState<boolean>(false);
   
   const {
     data: menuData,
@@ -44,8 +57,22 @@ export default function MenuManagementPage() {
     error,
   } = ServiceOfferingApi.useBusinessMenus();
   
-  const deleteItem = ServiceOfferingApi.useDeleteServiceItem();
   const updateItem = ServiceOfferingApi.useUpdateServiceItem();
+
+  // Close sort menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const sortMenuBtn = (e.target as HTMLElement)?.closest('[data-sort-menu]');
+      if (!sortMenuBtn) {
+        setShowSortMenu(false);
+      }
+    };
+
+    if (showSortMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showSortMenu]);
 
   // Recursively flatten items from nested subcategories
   const flattenItems = useCallback((category: Category, parentCategoryId: string, parentCategoryName: string): FlattenedItem[] => {
@@ -136,9 +163,21 @@ export default function MenuManagementPage() {
         (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
       );
     }
+
+    // Sort items by name
+    items = [...items].sort((a, b) => {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      
+      if (sortOrder === "asc") {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    });
     
     return items;
-  }, [allItems, selectedCategory, searchQuery]);
+  }, [allItems, selectedCategory, searchQuery, sortOrder]);
 
   const handleToggleAvailability = (itemId: string, item: FlattenedItem) => {
     // Get current visual state from local state or original data
@@ -180,18 +219,54 @@ export default function MenuManagementPage() {
     });
   };
 
-  const handleDeleteItem = async (itemId: string) => {
-    const promise = deleteItem.mutateAsync(itemId);
+  const handleSaveEditItem = async (itemData: {
+    id?: string;
+    name: string;
+    description?: string;
+    price: number;
+    mealType?: string;
+    cuisine?: string;
+    dish?: string;
+    servingFormat?: string;
+    preparationTime?: string;
+    quantityOptions?: Array<{ label: string; price: number }>;
+  }) => {
+    if (!selectedItem) return;
 
-    toast.promise(promise, {
-      loading: "Deleting item...",
-      success: "Item deleted successfully!",
-      error: (error) => {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred while deleting the item.";
-        return `Failed to delete item: ${errorMessage}`;
+    const updatePromise = updateItem.mutateAsync({
+      itemId: selectedItem.id,
+      itemData: {
+        category_id: selectedItem.categoryId,
+        name: itemData.name,
+        description: itemData.description,
+        price: itemData.price,
+        mealDetail: {
+          mealType: itemData.mealType,
+          cuisine: itemData.cuisine,
+          dish: itemData.dish,
+          servingFormat: itemData.servingFormat,
+          preparationTime: itemData.preparationTime,
+        },
+        quantityOptions: itemData.quantityOptions,
+      },
+    }).then(() => {
+      setIsEditModalOpen(false);
+      setSelectedItem(null);
+    }).catch((error) => {
+      console.error("❌ [EDIT ITEM ERROR]", {
+        itemId: selectedItem.id,
+        itemName: selectedItem.name,
+        error: error.response?.data || error.message,
+      });
+      throw error;
+    });
+
+    toast.promise(updatePromise, {
+      loading: "Updating item...",
+      success: "Item updated successfully!",
+      error: (err) => {
+        const errorMsg = err?.response?.data?.message || "Failed to update item";
+        return errorMsg;
       },
     });
   };
@@ -274,9 +349,40 @@ export default function MenuManagementPage() {
             <h2 className="text-sm font-bold text-gray-900">
               All Items ({filteredItems.length})
             </h2>
-            <button className="text-[#DB3A07] text-sm font-medium hover:underline">
-              Sort by: Name A-Z ▾
-            </button>
+            <div className="relative" data-sort-menu>
+              <button
+                onClick={() => setShowSortMenu(!showSortMenu)}
+                className="text-[#DB3A07] text-sm font-medium hover:underline flex items-center gap-1"
+                data-sort-menu
+              >
+                Sort by: Name {sortOrder === "asc" ? "A-Z" : "Z-A"} <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {showSortMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10" data-sort-menu>
+                  <button
+                    onClick={() => {
+                      setSortOrder("asc");
+                      setShowSortMenu(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortOrder === "asc" ? "font-semibold text-[#DB3A07]" : "text-gray-700"}`}
+                    data-sort-menu
+                  >
+                    Name A-Z
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortOrder("desc");
+                      setShowSortMenu(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-t border-gray-100 ${sortOrder === "desc" ? "font-semibold text-[#DB3A07]" : "text-gray-700"}`}
+                    data-sort-menu
+                  >
+                    Name Z-A
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Items List */}
@@ -310,7 +416,17 @@ export default function MenuManagementPage() {
                       {/* Item Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-sm text-gray-900">{item.name}</h3>
-                        <p className="text-sm font-bold text-[#DB3A07] mt-1">₦{Number(item.price).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-[#DB3A07] mt-1">
+                          {item.quantityOptions && item.quantityOptions.length > 0
+                            ? (() => {
+                                const prices = item.quantityOptions.map(opt => opt.price);
+                                const minPrice = Math.min(...prices);
+                                const maxPrice = Math.max(...prices);
+                                return `₦${Number(minPrice).toLocaleString()} - ₦${Number(maxPrice).toLocaleString()}`;
+                              })()
+                            : `₦${Number(item.price).toLocaleString()}`
+                          }
+                        </p>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
                             ● Available
@@ -350,18 +466,12 @@ export default function MenuManagementPage() {
                   <div className="mt-3 flex gap-2 pt-3 border-t border-gray-100 w-fit justify-end">
                     <Button 
                       onClick={() => {
-                        // TODO: Open edit price modal
-                        toast.info("Edit price modal - to be implemented");
+                        setSelectedItem(item);
+                        setIsEditModalOpen(true);
                       }}
                       className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
                     >
-                      ✏️ Edit Price
-                    </Button>
-                    <Button 
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
-                    >
-                      <Trash className="w-4 h-4" /> Delete
+                      <Pencil className="w-4 h-4" /> Edit Item
                     </Button>
                   </div>
                 </div>
@@ -381,6 +491,18 @@ export default function MenuManagementPage() {
           )}
         </>
       )}
+
+      {/* Edit Menu Item Modal */}
+      <EditMenuItemModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedItem(null);
+        }}
+        item={selectedItem}
+        onSubmit={handleSaveEditItem}
+        isSubmitting={updateItem.isPending}
+      />
     </div>
   );
 }
