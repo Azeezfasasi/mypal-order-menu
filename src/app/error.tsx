@@ -78,7 +78,7 @@ export default function Error({ error, reset }: ErrorProps) {
                 <li>• Try refreshing the page</li>
                 <li>• Go back to the previous page</li>
                 <li>• Return to the dashboard</li>
-                <li>• Contact support if the problem persists</li>
+                <li>• Contact MyPal support if the problem persists</li>
               </ul>
             </div>
           </CardContent>
