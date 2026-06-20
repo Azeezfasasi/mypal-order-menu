@@ -347,7 +347,7 @@ export default function MenuManagementPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="mt-3 flex gap-2 pt-3 border-t border-gray-100 w-full justify-end">
+                  <div className="mt-3 flex gap-2 pt-3 border-t border-gray-100 w-fit justify-end">
                     <Button 
                       onClick={() => {
                         // TODO: Open edit price modal
