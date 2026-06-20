@@ -162,18 +162,16 @@ export default function DashboardPage() {
       )}
 
       {/* Meal Prep Alert */}
-      {!ordersLoading && !ordersError && orders.length > 0 && (
-        <>
-          <MealPrepAlert
-            title="Meal prep is time sensitive!"
-            description="Keep an eye on countdowns to avoid delays."
-          />
+      <MealPrepAlert
+          title="Meal prep is time sensitive!"
+          description="Keep an eye on countdowns to avoid delays."
+        />
 
-          {/* Orders In Progress */}
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <OrdersInProgress orders={orders as any} />
-        </>
+      {!ordersLoading && !ordersError && (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <OrdersInProgress orders={orders as any} />
       )}
+
     </div>
   );
 }
