@@ -1,6 +1,6 @@
 {
   "name": "MyPal Iconic Delicacy Order Menu",
-  "short_name": "MyPal Admin",
+  "short_name": "MyPal Order Menu",
   "description": "Business admin dashboard for MyPal platform",
   "start_url": "/",
   "display": "standalone",
