@@ -19,7 +19,7 @@ interface MenuItem {
   image?: string;
   image_urls?: string[];
   stock_quantity?: number;
-  is_available?: boolean;
+  is_active?: boolean;
   mealDetail?: {
     mealType?: string;
     cuisine?: string;
@@ -183,7 +183,7 @@ export default function MenuManagementPage() {
     // Get current visual state from local state or original data
     const currentStatus = itemAvailability[itemId] !== undefined 
       ? itemAvailability[itemId] 
-      : (item.is_available || true);
+      : (item.is_active || true);
     
     const newStatus = !currentStatus;
     
@@ -195,7 +195,7 @@ export default function MenuManagementPage() {
       itemId,
       itemData: {
         category_id: item.categoryId,
-        is_available: newStatus,
+        is_active: newStatus,
       },
     }).catch((error) => {
       console.error("❌ [TOGGLE AVAILABILITY ERROR]", {
@@ -442,7 +442,7 @@ export default function MenuManagementPage() {
                             ? itemAvailability[item.id]
                               ? "bg-[#DB3A07]"
                               : "bg-gray-300"
-                            : item.is_available
+                            : item.is_active
                             ? "bg-[#DB3A07]"
                             : "bg-gray-300"
                         }`}
@@ -453,7 +453,7 @@ export default function MenuManagementPage() {
                               ? itemAvailability[item.id]
                                 ? "translate-x-6"
                                 : "translate-x-1"
-                              : item.is_available
+                              : item.is_active
                               ? "translate-x-6"
                               : "translate-x-1"
                           }`}
@@ -480,7 +480,7 @@ export default function MenuManagementPage() {
           </div>
 
           {/* Unavailable Warning */}
-          {filteredItems.some(item => !item.is_available) && (
+          {filteredItems.some(item => !item.is_active) && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3">
               <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
               <p className="text-xs text-orange-800">
