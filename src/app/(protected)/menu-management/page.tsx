@@ -74,7 +74,7 @@ export default function MenuManagementPage() {
     }
   }, [showSortMenu]);
 
-  // Recursively flatten items from nested subcategories
+  // Recursively flatten items from nested subcategories.
   const flattenItems = useCallback((category: Category, parentCategoryId: string, parentCategoryName: string): FlattenedItem[] => {
     const items: FlattenedItem[] = [];
 
