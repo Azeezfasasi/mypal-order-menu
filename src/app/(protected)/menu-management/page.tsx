@@ -183,7 +183,7 @@ export default function MenuManagementPage() {
     // Get current visual state from local state or original data
     const currentStatus = itemAvailability[itemId] !== undefined 
       ? itemAvailability[itemId] 
-      : (item.is_active || true);
+      : (item.is_active || true ); // Default to true if undefined
     
     const newStatus = !currentStatus;
     
@@ -263,7 +263,7 @@ export default function MenuManagementPage() {
 
     toast.promise(updatePromise, {
       loading: "Updating item...",
-      success: "Item updated successfully!",
+      success: "Menu Item updated successfully!",
       error: (err) => {
         const errorMsg = err?.response?.data?.message || "Failed to update item";
         return errorMsg;
@@ -428,9 +428,16 @@ export default function MenuManagementPage() {
                           }
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
-                            ● Available
-                          </span>
+                          {item.is_active && (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                              ● Available
+                            </span>
+                          )}
+                          {!item.is_active && (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                              ● Unavailable
+                            </span>
+                          )}
                         </div>
                       </div>
 
