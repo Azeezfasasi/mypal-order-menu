@@ -3,6 +3,72 @@
 import { useState, useEffect, useCallback } from "react";
 import ordersApi, { OrderFilter, OrderStats, Order } from "@/services/api/orders";
 
+const unwrapData = (value: any): any => {
+  if (value == null) return value;
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object" && value.data !== undefined) return unwrapData(value.data);
+  return value;
+};
+
+const normalizeOrder = (rawOrder: any): Order => {
+  const source = unwrapData(rawOrder);
+  const details = source?.details ?? {};
+  const user = source?.user ?? details?.user;
+  const orderItems = Array.isArray(details?.orderitems)
+    ? details.orderitems
+    : Array.isArray(source?.orderitems)
+    ? source.orderitems
+    : Array.isArray(source?.items)
+    ? source.items
+    : [];
+
+  const items = orderItems.map((item: any) => {
+    const nested = item?.item ?? item;
+    return {
+      id: String(item?.id ?? nested?.id ?? ""),
+      name: String(nested?.name ?? item?.name ?? "Unknown item"),
+      quantity: Number(item?.quantity ?? 1),
+      price: typeof item?.amount === "number" ? item.amount : Number(item?.amount ?? nested?.price ?? 0),
+      customerPreference: String(item?.meal_preference ?? ""),
+      optionLabel: String(item?.quantity_option_label ?? nested?.quantityOptions?.[0]?.label ?? ""),
+      imageUrl: Array.isArray(nested?.image_urls) ? nested.image_urls[0] : nested?.background_image_url || null,
+    };
+  });
+
+  const customer = user
+    ? {
+        id: String(user.id ?? ""),
+        firstName: String(user.firstname ?? user.first_name ?? user.name ?? ""),
+        lastName: String(user.lastname ?? user.last_name ?? ""),
+        name: [user.firstname ?? user.first_name ?? user.name, user.lastname ?? user.last_name]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || String(user.name ?? "Unknown"),
+        phone: String(user.phone_number ?? user.phone ?? "N/A"),
+        address: String(user.address ?? user.formatted_address ?? "N/A"),
+        city: String(user.city ?? ""),
+        state: String(user.state ?? ""),
+      }
+    : undefined;
+
+  return {
+    ...source,
+    id: String(source?.id ?? source?.details?.id ?? ""),
+    orderNumber: source?.orderNumber ?? source?.id ?? source?.details?.id ?? "",
+    status: String(source?.status ?? details?.status ?? "processing").toLowerCase() as any,
+    items,
+    customer,
+    prepTime: Number(details?.preparation_time_minutes ?? source?.preparation_time_minutes ?? details?.prepTime ?? source?.prepTime ?? 0),
+    riderArrivalTime: Number(details?.rider_arrival_time ?? source?.rider_arrival_time ?? source?.riderArrivalTime ?? 0),
+    totalPrice: Number(details?.amount ?? source?.totalPrice ?? source?.amount ?? 0),
+    createdAt: source?.createdAt ? new Date(source.createdAt) : source?.createdAt,
+    orderDate: source?.orderDate ?? source?.createdAt ?? details?.createdAt,
+    timeline: Array.isArray(details?.timeline) ? details.timeline : Array.isArray(source?.timeline) ? source.timeline : [],
+    firstName: user?.firstname ?? user?.first_name ?? user?.name ?? "Unknown",
+    lastName: user?.lastname ?? user?.last_name ?? "",
+  };
+};
+
 interface UseOrdersResult {
   orders: Order[];
   loading: boolean;
@@ -22,11 +88,12 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
         setLoading(true);
         setError(null);
         const response = await ordersApi.getOrders(filters);
-        
-        // Handle different response formats - API returns nested data.data
-        const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
+      
+        const payload = unwrapData(response);
+        const ordersList = payload?.data ?? payload?.orders ?? payload;
+        const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
         if (isMounted) {
-          setOrders(Array.isArray(ordersList) ? ordersList : []);
+          setOrders(normalizedOrders);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch orders";
@@ -52,8 +119,10 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getOrders(filters);
-      const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
-      setOrders(Array.isArray(ordersList) ? ordersList : []);
+      const payload = unwrapData(response);
+      const ordersList = payload?.data ?? payload?.orders ?? payload;
+      const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
+      setOrders(normalizedOrders);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch orders";
       setError(message);
@@ -145,7 +214,8 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
         setError(null);
         const response = await ordersApi.getActiveOrders(branchId);
         
-        const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
+        const payload = unwrapData(response);
+        const ordersList = payload?.data ?? payload?.orders ?? payload;
         if (isMounted) {
           setOrders(Array.isArray(ordersList) ? ordersList : []);
         }
@@ -173,7 +243,8 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getActiveOrders(branchId);
-      const ordersList = response.data?.data || response.data?.orders || response.orders || response || [];
+      const payload = unwrapData(response);
+      const ordersList = payload?.data ?? payload?.orders ?? (payload || []);
       setOrders(Array.isArray(ordersList) ? ordersList : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch active orders";
@@ -213,9 +284,10 @@ export const useOrderById = (orderId: string | null): UseOrderByIdResult => {
         setError(null);
         const response = await ordersApi.getOrderById(orderId);
         
-        const orderData = response.data || response;
+        const orderData = unwrapData(response) ?? null;
+        const normalizedOrder = orderData ? normalizeOrder(orderData) : null;
         if (isMounted) {
-          setOrder(orderData);
+          setOrder(normalizedOrder);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch order";
@@ -246,8 +318,9 @@ export const useOrderById = (orderId: string | null): UseOrderByIdResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getOrderById(orderId);
-      const orderData = response.data || response;
-      setOrder(orderData);
+      const orderData = unwrapData(response) ?? null;
+      const normalizedOrder = orderData ? normalizeOrder(orderData) : null;
+      setOrder(normalizedOrder);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch order";
       setError(message);

@@ -181,9 +181,10 @@ export default function MenuManagementPage() {
 
   const handleToggleAvailability = (itemId: string, item: FlattenedItem) => {
     // Get current visual state from local state or original data
-    const currentStatus = itemAvailability[itemId] !== undefined 
-      ? itemAvailability[itemId] 
-      : (item.is_active || true ); // Default to true if undefined
+    // Use strict undefined checks so `false` is preserved (avoid `false || true` turning it to `true`).
+    const currentStatus = itemAvailability[itemId] !== undefined
+      ? itemAvailability[itemId]
+      : (item.is_active !== undefined ? item.is_active : true); // Default to true if undefined
     
     const newStatus = !currentStatus;
     

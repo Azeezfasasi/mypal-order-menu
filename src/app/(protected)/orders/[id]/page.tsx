@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { useOrderById, useUpdateOrderStatus, useNotifyCustomer } from "@/hooks/use-orders";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, MapPin, Camera, PhoneCall, ChevronRight, AlertCircle, Loader } from "lucide-react";
+import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -22,7 +23,6 @@ export default function OrderDetailsPage() {
   const handleMarkAsReady = async () => {
     try {
       await updateStatus(orderId, "READY");
-      // Refresh or show success message
       alert("Order marked as ready!");
     } catch (err) {
       alert("Failed to update order status");
@@ -75,255 +75,306 @@ export default function OrderDetailsPage() {
     );
   }
 
-  const statusColors = {
-    Preparing: "bg-orange-50 text-orange-700 border-orange-200",
-    Ready: "bg-green-50 text-green-700 border-green-200",
-    Pending: "bg-gray-50 text-gray-700 border-gray-200",
-    "Picked Up": "bg-blue-50 text-blue-700 border-blue-200",
-    Delivered: "bg-green-50 text-green-700 border-green-200",
+  const statusColors: Record<string, string> = {
+    processing: "bg-orange-50 text-orange-700 border-orange-200",
+    preparing: "bg-orange-50 text-orange-700 border-orange-200",
+    ready: "bg-green-50 text-green-700 border-green-200",
+    pending: "bg-gray-50 text-gray-700 border-gray-200",
+    "picked up": "bg-blue-50 text-blue-700 border-blue-200",
+    delivered: "bg-green-50 text-green-700 border-green-200",
   };
 
   if (!order) {
     return null; // Should not reach here due to loading state
   }
 
+  const statusLabel = String(order.status || "processing").replace(/^(\w)/, (match) => match.toUpperCase());
+
+  const parseApiDate = (source: unknown): Date | null => {
+    if (!source) return null;
+    const value = typeof source === "string" || typeof source === "number" || source instanceof Date
+      ? source
+      : String(source);
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const orderDate = parseApiDate(order.createdAt ?? order.orderDate);
+  const formattedOrderDate = orderDate
+    ? orderDate.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "";
+  const totalPrice = typeof order.totalPrice === "number" ? order.totalPrice : Number(order.totalPrice) || 0;
+  const orderItems = Array.isArray(order.items) ? order.items : [];
+  const itemCount = orderItems.length;
+  const orderTimeline = Array.isArray(order.timeline) ? order.timeline : [];
+
+  const prepTime = Number(order.prepTime ?? 0);
+  const riderArrivalTime = Number(order.riderArrivalTime ?? 0);
+  const primaryItem = orderItems[0];
+  const prepProgress = prepTime <= 0 ? 100 : Math.max(12, Math.min(100, 100 - Math.round((prepTime / 30) * 100)));
+  const riderProgress = riderArrivalTime <= 0 ? 100 : Math.max(12, Math.min(100, 100 - Math.round((riderArrivalTime / 30) * 100)));
+
   return (
-    <div className="space-y-6 bg-linear-to-r from-[#B2D5FF]/10 to-blue-[#B2D5FF]/10 px-0">
-        {/* Header */}
-        <div className="flex items-center justify-between mt-3 gap-2">
-            <div className="flex items-center gap-3 text-[24px] font-extrabold leading-6.5 text-[#031927]">
-                <button onClick={() => router.back()} className="text-gray-600">
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
+    <div className="min-h-screen space-y-6 bg-linear-to-r from-[#F7FBFF] via-white to-[#F7FBFF] px-6 py-6 md:px-0">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:border-slate-300"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-700" />
+            </button>
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">Order details</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-row md:flex-col gap-2 justify-between md:justify-start">
+          <p className="text-[14px] leading-[26px] font-semibold text-[#68798A]">Order <span className="text-[15px] text-[#363C44]">#{order.orderNumber}</span></p>
+          <div className={`inline-flex items-center rounded-full md:w-fit border px-4 py-2 text-sm font-semibold ${statusColors[String(order.status).toLowerCase()] || "border-slate-200 bg-slate-100 text-slate-700"}`}>
+            {statusLabel}
+          </div>
+        </div>
+
+        {/* order prep and rider time */}
+        <div className="grid gap-4 grid-cols-2">
+          <div className="rounded-[24px] bg-[#F8FAFC] p-4 md:p-1">
+            <p className="text-[12px] leading-[26px] font-medium uppercase tracking-[0.24em] text-[#68798A]">Prep time</p>
+            <p className="text-[14px] leading-[26px] font-semibold text-[#DB3A07]">{order.prepTime || 0} mins left</p>
+            <div className="h-1 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full bg-[#F97316]" style={{ width: `${prepProgress}%` }} />
+            </div>
+          </div>
+          <div className="rounded-[24px] bg-[#F8FAFC] p-4 md:p-1">
+            <p className="text-[12px] leading-[26px] font-medium uppercase tracking-[0.24em] text-[#68798A]">Rider arrival</p>
+            <p className="text-[14px] leading-[26px] font-semibold text-[#114CCC]">{order.riderArrivalTime || 0} mins away</p>
+            <div className="h-1 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full bg-[#114CCC]" style={{ width: `${riderProgress}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Order details */}
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
+          <div className="border border-slate-200 bg-white p-0 shadow-sm">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-1 items-center">
+              {/* Order item image and title */}
+              <div className="flex items-center gap-4 py-4 md:py-2 px-4 md:px-2">
+                <div className="h-24 w-24 overflow-hidden rounded-[28px] bg-slate-100">
+                  {typeof primaryItem?.imageUrl === "string" && primaryItem.imageUrl ? (
+                    <Image
+                      src={primaryItem.imageUrl}
+                      alt={String(primaryItem.name || "Order item")}
+                      width={96}
+                      height={96}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">Item</div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className="text-[20px] leading-[26px] font-semibold text-[#031927] truncate">{String(primaryItem?.name || "Order item")}</h2>
+                  <p className="text-[16px] leading-[26px] text-[#68798A] truncate">Quantity: <span className="font-bold">{primaryItem.quantity}</span>
+                  </p>
+                  <p className="text-[20px] leading-[26px] font-bold text-[#031927]">₦{totalPrice.toLocaleString()}</p>
+                </div>
+              </div>
+              
+              {/* Customer data - add customer name, phone and photo */}
+              {/* <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Customer</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950">{order.customer?.name || "Customer name not available"}</p>
+                <p className="mt-1 text-sm text-slate-500">{order.customer?.phone || "Not Available"}</p>
+                <p className="mt-1 text-sm text-slate-500">{order.customer?.address || "Customer address not available"}</p>
+                <p className="mt-2 text-sm text-slate-500">{itemCount} item{itemCount === 1 ? "" : "s"}</p>
+              </div> */}
+
+              {/* Customer details */}
+              <div className="hidden md:block rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Customer</p>
+                    <p className="mt-2 text-xl font-semibold text-slate-950">{order.customer?.name || "Customer name not available"}</p>
+                  </div>
+                  <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Customer</div>
+                </div>
+                <div className="mt-6 space-y-4 text-sm text-slate-700">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Phone</p>
+                    <p className="mt-1 text-base text-slate-900">{String(order.customer?.phone ?? "N/A")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Delivery address</p>
+                    <p className="mt-1 text-base text-slate-900">{String(order.customer?.address || "N/A")}</p>
+                    <p className="mt-1 text-sm text-slate-500">{String(order.customer?.city || "")}{order.customer?.city && order.customer?.state ? ", " : ""}{String(order.customer?.state || "")}</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="p-4">
+              {/* {primaryItem?.customerPreference ? ( */}
+                <p className="mt-3 text-sm font-medium text-slate-700">Preference: <span className="font-semibold text-slate-900">{String(primaryItem.customerPreference)}</span></p>
+              {/* ) : null} */}
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 md:grid-cols-1 gap-4">
+              <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Created</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{formattedOrderDate}</p>
+              </div>
+              <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Order ID</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">#{order.id}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 md:hidden block">
+            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-bold">Order Details</h1>
+                  <p className="text-sm font-medium text-slate-500">Customer</p>
+                  <p className="mt-2 text-xl font-semibold text-slate-950">{order.customer?.name || "Unknown"}</p>
                 </div>
-            </div>
-        </div>
-
-        {/* Order Title and Status */}
-        <div className="flex items-center justify-start gap-2">
-            <h1 className="text-[16px] font-semibold leading-6.5 text-[#68798A]">Order <span className="text-[#363C44]">#{order.orderNumber}</span></h1>
-            <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium border ${statusColors[order.status as keyof typeof statusColors]}`}>
-                {order.status}
-            </span>
-        </div>
-
-      {/* Order Info */}
-
-      {/* Time Info */}
-      <div className="grid grid-cols-2 gap-3 p-0 rounded-lg">
-        <div>
-          <div className="text-[14px] font-medium leading-6.5 text-[#68798A]">Prep Time</div>
-          <div className="text-[14px] font-semibold leading-6.5 text-[#DB3A07]">{order.prepTime || 0} mins left</div>
-        </div>
-        <div>
-          <div className="text-[14px] font-medium leading-6.5 text-[#68798A]">Rider Arrival</div>
-          <div className="text-[14px] font-semibold leading-6.5 text-blue-600">{order.riderArrivalTime || 0} mins away</div>
-        </div>
-      </div>
-
-      {/* Order Items */}
-      {order.items && order.items.length > 0 ? (
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <div className="flex gap-3 mb-3">
-          <Image
-            width={80}
-            height={80}
-            src="/images/rice.svg"
-            alt={String(order.items[0]?.name || 'Order item')}
-            className="w-20 h-20 rounded-lg object-cover"
-          />
-          <div className="flex-1">
-            <h3 className="font-semibold text-[20px] leading-6.5 text-[#031927]">{order.items[0]?.name}</h3>
-            <p className="text-[16px] font-semibold leading-6.5 text-[#68798A] mt-1">Quantity: <span className="text-[#031927]">{String(order.items[0]?.quantity || 0)}</span></p>
-            <p className="text-[20px] font-bold leading-6.5 text-[#031927] mt-2">₦{String((order.totalPrice as number) || 0).toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
-      ) : null}
-
-      {/* Customer Info */}
-      {order.customer ? (
-      <div className="space-y-3">
-        <h3 className="text-[16px] font-semibold leading-6.5 text-[#68798A]">Customer</h3>
-        <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">👤</div>
-            <div>
-              <p className="text-[20px] font-semibold leading-6.5 text-[#031927]">{order.customer.name}</p>
-              <p className="text-[16px] font-semibold leading-6.5 text-[#68798A]">{String(order.customer.phone || 'N/A')}</p>
-            </div>
-          </div>
-          <div className="flex items-start justify-between gap-2 pt-2 border-t">
-            <MapPin className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm">{order.customer.address}</p>
-              <p className="text-xs text-gray-600">{String(order.customer.city || '')}, {String(order.customer.state || '')}</p>
-            </div>
-            <Link href="#" className="text-xs text-orange-500 hover:underline flex items-center gap-1">
-            View on map <ChevronRight className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
-            </Link>
-          </div>
-        </div>
-      </div>
-      ) : null}
-
-      {/* Customer Preference */}
-      {order.items && order.items[0]?.customerPreference ? (
-        <div className="bg-[#FEF8E1] rounded-[10px] p-4">
-          <h3 className="font-semibold text-[14.72px] text-[#8E4E09] leading-[30.95px]">Customer Preference</h3>
-          <p className="font-medium text-[12.72px] text-[#1A1D21] leading-[30.95px]">{String(order.items[0]?.customerPreference || '')}</p>
-        </div>
-      ) : null}
-
-      {/* Order Timeline */}
-      {order.timeline && order.timeline.length > 0 ? (
-      <div className="space-y-3">
-        <h3 className="font-bold">Order Timeline</h3>
-        <div className="space-y-4">
-          {order.timeline.map((event, index) => (
-            <div key={String(event.id)} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                  event.isCurrentStatus ? "bg-blue-600" : "bg-gray-400"
-                }`}>
-                  {event.isCurrentStatus ? "⊙" : "●"}
+                <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Customer</div>
+              </div>
+              <div className="mt-6 space-y-4 text-sm text-slate-700">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Phone</p>
+                  <p className="mt-1 text-base text-slate-900">{String(order.customer?.phone ?? "N/A")}</p>
                 </div>
-                {index < order.timeline!.length - 1 && (
-                  <div className="w-0.5 h-12 bg-gray-300 my-2"></div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Delivery address</p>
+                  <p className="mt-1 text-base text-slate-900">{String(order.customer?.address || "N/A")}</p>
+                  <p className="mt-1 text-sm text-slate-500">{String(order.customer?.city || "")}{order.customer?.city && order.customer?.state ? ", " : ""}{String(order.customer?.state || "")}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Order timeline</p>
+                  <p className="mt-2 text-sm text-slate-700">Track status progress below.</p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {orderTimeline.length > 0 ? (
+                  orderTimeline.map((event, index) => {
+                    const eventTimestamp = parseApiDate((event as any).timestamp);
+                    return (
+                      <div key={String((event as any).id ?? index)} className="flex items-start gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold",
+                            (event as any).isCurrentStatus ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-slate-500"
+                          )}>
+                            {(event as any).isCurrentStatus ? "✓" : index + 1}
+                          </div>
+                          {index < orderTimeline.length - 1 ? <div className="mt-1 h-full w-px bg-slate-200" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">{String((event as any).status || "")}</p>
+                          <p className="mt-1 text-xs text-slate-500">{eventTimestamp ? eventTimestamp.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" }) : ""}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-slate-500">No timeline events yet.</p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
+          <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-sm">{event.status}</p>
-                <p className={`text-xs ${event.isCurrentStatus ? "text-blue-600 font-medium" : "text-gray-600"}`}>
-                  {event.isCurrentStatus ? "In Progress" : event.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <p className="text-sm font-medium text-slate-500">Order items</p>
+                <p className="mt-1 text-sm text-slate-700">{itemCount} item{itemCount === 1 ? "" : "s"} in this order</p>
               </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Summary</span>
             </div>
-          ))}
-          {/* Remaining steps */}
-          {order.timeline.length < 4 && (
-            <>
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold border-2 border-gray-300">
-                    ○
-                  </div>
-                  <div className="w-0.5 h-12 bg-gray-300 my-2"></div>
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-gray-500">Ready for Pickup</p>
-                  <p className="text-xs text-gray-500">Pending</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold border-2 border-gray-300">
-                    ○
-                  </div>
-                  <div className="w-0.5 h-12 bg-gray-300 my-2"></div>
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-gray-500">Picked Up</p>
-                  <p className="text-xs text-gray-500">Pending</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold border-2 border-gray-300">
-                    ○
-                  </div>
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-gray-500">Delivered</p>
-                  <p className="text-xs text-gray-500">Pending</p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      ) : null}
 
-      {/* Meal Verification */}
-      <div className="space-y-3">
-        <h3 className="font-bold">Meal Verification</h3>
-        <p className="text-xs text-gray-600">Send meal confirmation to customer before dispatch.</p>
-
-        {!mealPhoto ? (
-            <>
-          <div className="bg-gray-50 rounded-lg p-8 border-2 border-dashed border-gray-300 text-center">
-            <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-700 mb-2">Snap Meal Photo</p>
-            <p className="text-xs text-gray-600 mb-4">Take a quick photo of the completed order before dispatch.</p>
-          </div>
-          <div className="flex gap-2">
-              <Button className="flex-1 bg-white text-orange-600 border border-orange-600 hover:bg-orange-50">
-                <Camera className="w-4 h-4 mr-2" />
-                Open Camera
-              </Button>
-              <Button className="flex-1 bg-orange-600 text-white hover:bg-orange-700">
-                <span>📁</span>
-                <span className="ml-2">Upload Image</span>
-              </Button>
-          </div>
-          </>
-        ) : (
-          <div className="space-y-3">
-            <Image 
-              width={300}
-              height={300}
-              src={mealPhoto} 
-              alt="Meal" 
-              className="w-full rounded-lg" 
-            />
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleNotifyCustomer}
-                disabled={notifyLoading}
-                className="flex-1 bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
-              >
-                {notifyLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
-                {notifyLoading ? "Sending..." : "Send to customer"}
-              </Button>
-              <Button 
-                onClick={() => setMealPhoto(null)}
-                className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => setMealPhoto(null)}
-                className="flex-1 bg-white text-orange-600 border border-orange-600 hover:bg-orange-50"
-              >
-                Retake
-              </Button>
+            <div className="mt-5 space-y-3">
+              {orderItems.map((item: any, index: number) => (
+                <div key={String(item?.id ?? index)} className="grid gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-20 w-20 overflow-hidden rounded-3xl bg-white">
+                      {String(item?.imageUrl || "") ? (
+                        <Image
+                          src={String(item.imageUrl)}
+                          alt={String(item?.name || "Item image")}
+                          width={80}
+                          height={80}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-slate-400">No image</div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-950 truncate">{String(item?.name || "Item")}</p>
+                      <p className="mt-1 text-xs text-slate-500 truncate">Qty {String(item?.quantity || 1)}{String(item?.optionLabel || "") ? ` · ${String(item.optionLabel)}` : ""}</p>
+                      {String(item?.customerPreference || "") ? (
+                        <p className="mt-2 text-xs text-slate-500">Preference: {String(item.customerPreference)}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-slate-900">₦{Number(item?.price || 0).toLocaleString()}</p>
+                    {/* <p className="mt-2 text-xs text-slate-500">Line total</p> */}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+
+          <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-slate-500">Verification</p>
+            <p className="mt-2 text-sm text-slate-700">Capture meal verification after packing.</p>
+            <div className="mt-5 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+              <Camera className="mx-auto mb-3 h-6 w-6 text-slate-400" />
+              <p className="font-semibold text-slate-900">Meal photo verification</p>
+              <p className="mt-2">No photo uploaded yet.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Bottom Actions */}
-      <div className="space-y-2 pb-4 flex flex-col items-center justify-center gap-2">
-        <div className="flex items-center justify-center gap-2 w-full">
-          <Button className="flex-1 bg-green-100 text-green-700 hover:bg-green-200">
-            <PhoneCall className="w-4 h-4 mr-2" />
-            Call Rider
-          </Button>
-          <Button className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">
-            ⋮ More Actions
-          </Button>
+      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-row gap-4 md:flex-col lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500">Ready to take action?</p>
+            <p className="mt-1 max-w-2xl text-sm text-slate-700">Mark this order ready, contact the rider, or notify the customer directly from this view.</p>
+          </div>
+          <div className="grid gap-3 grid-cols-3 md:grid-cols-1">
+            <Button variant="outline" className="rounded-full px-5 py-3">
+              <PhoneCall className="w-4 h-4 mr-2" />
+              Call Rider
+            </Button>
+            <Button variant="secondary" className="rounded-full px-5 py-3" onClick={handleNotifyCustomer} disabled={notifyLoading}>
+              {notifyLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
+              Notify Customer
+            </Button>
+            <Button className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700" onClick={handleMarkAsReady} disabled={updateLoading}>
+              {updateLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {updateLoading ? "Updating..." : "Mark Ready"}
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={handleMarkAsReady}
-          disabled={updateLoading}
-          className="w-full bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
-        >
-          {updateLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
-          {updateLoading ? "Updating..." : "Mark as Ready for Pickup"}
-        </Button>
       </div>
     </div>
   );
 }
+
+        

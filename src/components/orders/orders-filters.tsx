@@ -10,108 +10,152 @@ interface StatusFilterProps {
   onClick: () => void;
 }
 
+const statusColorMap: Record<string, string> = {
+  All: "text-orange-700 bg-orange-100 border-orange-200",
+  Pending: "text-[#B45309] bg-[#FFEDD5] border-[#FCD34D]",
+  Preparing: "text-[#BE123C] bg-[#FCE7F3] border-[#F9A8D4]",
+  Ready: "text-[#0C4A6E] bg-[#E0F2FE] border-[#7DD3FC]",
+  "Picked Up": "text-[#6D28D9] bg-[#EEF2FF] border-[#C4B5FD]",
+  Delivered: "text-[#047857] bg-[#D1FAE5] border-[#86EFAC]",
+};
+
 export function StatusFilter({
   label,
   count,
   isActive,
   onClick,
 }: StatusFilterProps) {
-  const colorMap = {
-    All: "#DB3A07",
-    Pending: "#031927",
-    Preparing: "#DB3A07",
-    Ready: "#0066CC",
-    "Picked Up": "#7C3AED",
-    Delivered: "#10B981",
-  };
-
-  const textColor = colorMap[label as keyof typeof colorMap] || "#031927";
+  const badgeClass = isActive
+    ? "bg-[#FFF7ED] text-[#C2410C] border-[#F59E0B] shadow-sm"
+    : statusColorMap[label] || "bg-white text-slate-900 border border-slate-200";
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "rounded-lg px-2 py-4 flex flex-col gap-4 transition-all",
-        isActive
-          ? "bg-orange-100 border-2 border-orange-500"
-          : "bg-white border border-gray-200 hover:border-gray-300"
+        "rounded-3xl px-4 md:px-2 py-4 md:py-2 flex flex-col items-start gap-2 transition-all zmin-w-[130px] text-left",
+        isActive ? "border-2 border-orange-400" : "border border-slate-200 hover:border-slate-300 bg-white",
       )}
     >
-      <div className="text-[14px] font-semibold leading-[100%]" style={{ color: isActive ? "#DB3A07" : textColor }}>
-        {label}
-      </div>
-      <div className="text-[16px] font-semibold leading-[100%]" style={{ color: isActive ? "#DB3A07" : textColor }}>
-        {count}
-      </div>
+      <span className={cn("text-[13px] font-semibold uppercase tracking-[0.12em]", isActive ? "text-[#C2410C]" : "text-slate-500")}>{label}</span>
+      <span className={cn("text-[18px] font-bold", isActive ? "text-[#C2410C]" : "text-slate-900")}>{count}</span>
     </button>
   );
 }
 
 interface OrderListItemProps {
-  orderNumber: number;
+  orderNumber: string | number;
   status: string;
-  items: string;
+  itemTitle: string;
+  itemImage?: string;
   customer: string;
   location: string;
+  createdAt?: string;
   prepTime: number;
   riderArrivalTime: number;
+  customerPreference?: string;
   onClick?: () => void;
 }
+
+const statusBadgeMap: Record<string, string> = {
+  Processing: "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B]",
+  Pending: "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B]",
+  Preparing: "bg-[#FEE2E2] text-[#B91C1C] border-[#FCA5A5]",
+  Ready: "bg-[#DBEAFE] text-[#1D4ED8] border-[#93C5FD]",
+  "Picked Up": "bg-[#EDE9FE] text-[#6D28D9] border-[#C4B5FD]",
+  Delivered: "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]",
+};
+
+const formatStatusLabel = (status: string) => {
+  if (!status) return "Unknown";
+  return status
+    .toString()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const formatCreatedAt = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+};
 
 export function OrderListItem({
   orderNumber,
   status,
-  items,
+  itemTitle,
+  itemImage,
   customer,
   location,
+  createdAt,
   prepTime,
   riderArrivalTime,
+  customerPreference,
   onClick,
 }: OrderListItemProps) {
+  const statusLabel = formatStatusLabel(status);
+  const createdAtLabel = formatCreatedAt(createdAt);
+
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white rounded-[24px] border border-slate-200 shadow-sm hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
     >
-      <div className="flex gap-3">
-        {/* Order Image */}
-        <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 overflow-hidden">
-          <Image
-            width={64}
-            height={64}
-            src="/images/rice.svg"
-            alt={items}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        {/* Order Info */}
-        <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-                <span className="font-extrabold text-[14px] leading-6.5 text-black">#{orderNumber}</span>
-                {/* INCLUDE DATE */}
-                <span className="text-[12px] font-semibold leading-6.5 text-[#DB3A07]">{status} <span className="text-[#363C44]">{new Date().toLocaleDateString()}</span></span>
-                {/* more options */}
-                <button className="text-gray-400 hover:text-gray-600">⋮</button>
+      <div className="grid grid-cols-2 md:grid-cols-1 p-5 md:px-2">
+          <div className="flex flex-col justify-start items-start gap-4">
+            {/* Order details */}
+            <div className="flex flex-row zmd:flex-col items-start justify-between gap-4">
+              <div className="relative sh-[120px] sw-[140px] overflow-hidden rounded-[24px] bg-slate-100">
+                {itemImage ? (
+                  <Image src={itemImage} alt={itemTitle || "Order item"} width={85} height={82} className="object-cover w-[170px] h-[100px]" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-slate-400">No image</div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[14px] md:text-[11px] uppercase leading-[26px] font-extrabold stracking-[0.24em] text-black truncate">#{orderNumber}</p>
+                <div className="flex items-center gap-2">
+                  <span className={cn("hidden md:inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
+                  {createdAtLabel ? (
+                    <p className="mt-1 text-xs text-slate-400">{createdAtLabel}</p>
+                  ) : null}
                 </div>
-                <p className="text-[14px] font-semibold leading-6.5 text-[#031927] truncate">{items}</p>
-                <p className="text-[12px] font-semibold leading-6.5 text-[#363C44] -mt-1">{customer}</p>
-                <p className="text-[12px] font-medium leading-6.5 text-[#68798A] -mt-0.5 flex items-center gap-1"><MapPin className="w-4 h-4 mr-0" /> {location}</p>
+                <h3 className="mt-1 text-[14px] leading-[26px] font-semibold text-[#031927] truncate">{itemTitle}</h3>
+                <p className="text-[12px] leading-[26px] font-semibold text-[#363C44]">{customer}</p>
+                <div className="flex items-center gap-2 text-[12px] leading-[26px] font-medium text-[#68798A]">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{location}</span>
+                </div>
+              </div>
+              <span className={cn("md:hidden inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
             </div>
-      </div>
 
-      {/* Times */}
-      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100">
-        <div>
-          <div className="text-xs text-gray-600">Prep Time</div>
-          <div className="text-xs font-bold text-orange-500">{prepTime} mins left</div>
-        </div>
-        <div>
-          <div className="text-xs text-gray-600">Rider Arrival</div>
-          <div className="text-xs font-bold text-blue-600">{riderArrivalTime} mins away</div>
-        </div>
-        <div className="flex items-center justify-end gap-0">
-            <Image src="/images/callrider.svg" alt="Call Icon" width={16} height={16} className="w-10 h-10" />
+            {/* Prep time and rider time */}
+            <div className="w-full grid gap-3 grid-cols-2 border-t border-slate-200 pt-2">
+              <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-[12px] uppercase leading-[26px] font-medium text-[#68798A]">Prep time</p>
+                <p className="text-[14px] leading-[26px] font-semibold text-[#DB3A07]">{prepTime} mins left</p>
+                {/* Make this bar to read the prepTime */}
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full w-1/2 rounded-full bg-[#F97316]" />
+                </div>
+              </div>
+              <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-[12px] uppercase leading-[26px] font-medium text-[#68798A]">Rider arrival</p>
+                <p className="text-[14px] leading-[26px] font-semibold text-[#0EA5E9]">{riderArrivalTime} mins away</p>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full w-1/2 rounded-full bg-[#0EA5E9]" />
+                </div>
+              </div>
+            </div>
+
+            {customerPreference ? (
+              <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto">
+                <span className="font-medium">Customer preference:</span> <span className="font-bold">{customerPreference}</span>
+              </div>
+            ) : null}
         </div>
       </div>
     </div>

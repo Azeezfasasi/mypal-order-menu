@@ -37,6 +37,15 @@ export default function OrdersPage() {
     return `You're signed in with the wrong account. Your current account (${business?.category?.name || "this account"}) doesn't have access to this section. Please sign in or switch to an account that has access to ${required}.`;
   };
 
+  const parseOrderDate = (source: unknown): string | undefined => {
+    if (!source) return undefined;
+    const value = typeof source === "string" || typeof source === "number" || source instanceof Date
+      ? source
+      : String(source);
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  };
+
   // Only use API orders - no fallback to mock
   const allOrders = apiOrders;
 
@@ -84,42 +93,42 @@ export default function OrdersPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-start gap-2 mt-2">
-        <div className="flex items-center gap-2 mb-2">
-          <button onClick={() => router.back()} className="text-gray-600"><Image src="/images/arrowleft.svg" alt="Back" width={16} height={16} className="w-6 h-6" /></button>
+      <div className="flex flex-col gap-3 mt-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:border-slate-300">
+              <Image src="/images/arrowleft.svg" alt="Back" width={16} height={16} className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-[28px] font-extrabold leading-[1.1] text-slate-950">Orders</h1>
+              <p className="text-sm text-slate-500">Track every order in one place.</p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col items-start justify-start gap-0 mb-1">
-          <h1 className="text-[24px] font-extrabold leading-6.5 text-[#031927]">Orders</h1>
-          <p className="text-[16px] font-medium leading-6.5 text-[#68798A]">Manage and track all orders</p>
-        </div>
-      </div>
 
-      {/* Search */}
-      <div className="">
-        {/* <Image
-            width={20}
-            height={20}
-            src="/images/search.svg"
-            alt="Search Icon"
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-        /> */}
-        <Input
+        <div className="relative">
+          <Input
             type="text"
-            placeholder="Search order id, customer name, item name..."
+            placeholder="Search order ID, customer name, item name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-4 py-6 bg-white rounded-[100px] border border-[#E1E3E7]"
-        />
-      </div>
+            className="h-12 rounded-[40px] border border-slate-200 bg-white px-5 pl-12 shadow-sm"
+          />
+          <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
+        </div>
 
-      {/* Status Filters */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-4 md:grid-cols-3 gap-2 overflow-x-auto pb-2">
+        <div className="grid grid-cols-4 md:grid-cols-3 gap-3 overflow-x-auto pb-2">
           <StatusFilter
             label="All"
             count={allOrders.length}
             isActive={selectedStatus === "All"}
             onClick={() => setSelectedStatus("All")}
+          />
+          <StatusFilter
+            label="Processing"
+            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("processing")).length}
+            isActive={selectedStatus === "Processing"}
+            onClick={() => setSelectedStatus("Processing")}
           />
           <StatusFilter
             label="Pending"
@@ -172,31 +181,36 @@ export default function OrdersPage() {
             </div>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white shadow-sm">
-            <div className="text-center">
-              <div className="text-gray-400 mb-3">
-                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center py-12 border border-slate-200 rounded-[24px] bg-white shadow-sm">
+            <div className="text-center max-w-sm">
+              <div className="text-slate-400 mb-4">
+                <svg className="w-14 h-14 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                </svg>
-             </div>
-              <p className="md:text-sm text-[18px] font-semibold text-gray-700">No orders found</p>
-              <p className="md:text-xs text-[14px] text-gray-500 mt-1">Try adjusting your filters or search criteria</p>
+              </div>
+              <p className="text-lg font-semibold text-slate-900">No orders match that search</p>
+              <p className="mt-2 text-sm text-slate-500">Clear the search or choose a different status filter to see your latest orders.</p>
             </div>
           </div>
         ) : (
-          filteredOrders.map((order: Order) => (
-            <OrderListItem
-              key={order.id}
-              orderNumber={typeof order.orderNumber === "string" ? parseInt(order.orderNumber, 10) : order.orderNumber || 0}
-              status={order.status || "Unknown"}
-              items={(order.items?.map((i) => i.name).join(", ")) || "N/A"}
-              customer={order.customer?.name || "Unknown"}
-              location={order.customer?.address || "N/A"}
-              prepTime={order.prepTime || 0}
-              riderArrivalTime={order.riderArrivalTime || 0}
-              onClick={() => router.push(`/orders/${order.id}`)}
-            />
-          ))
+          <div className="grid gap-4">
+            {filteredOrders.map((order: Order) => (
+              <OrderListItem
+                key={order.id}
+                orderNumber={order.orderNumber ?? order.id}
+                status={order.status || "Unknown"}
+                itemTitle={order.items?.[0]?.name ? String(order.items[0].name) : "Order item"}
+                itemImage={order.items?.[0]?.imageUrl ? String(order.items[0].imageUrl) : undefined}
+                customer={order.customer?.name || "Unknown"}
+                location={order.customer?.address || "N/A"}
+                createdAt={parseOrderDate(order.createdAt ?? order.orderDate)}
+                prepTime={order.prepTime || 0}
+                riderArrivalTime={order.riderArrivalTime || 0}
+                customerPreference={order.items?.[0]?.customerPreference ? String(order.items[0].customerPreference) : undefined}
+                onClick={() => router.push(`/orders/${order.id}`)}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
