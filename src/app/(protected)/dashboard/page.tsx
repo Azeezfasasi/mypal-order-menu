@@ -169,8 +169,7 @@ export default function DashboardPage() {
           description="Keep an eye on countdowns to avoid delays."
         />
 
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <OrdersInProgress orders={orders as any} />
+        <OrdersInProgress orders={orders} />
         </>
       )}
 

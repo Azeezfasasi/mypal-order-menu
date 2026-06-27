@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useOrderById, useUpdateOrderStatus, useNotifyCustomer } from "@/hooks/use-orders";
+import { OrderStatus } from "@/types/enums";
+import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader } from "lucide-react";
+import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
@@ -20,12 +28,74 @@ export default function OrderDetailsPage() {
   const { updateStatus, loading: updateLoading } = useUpdateOrderStatus();
   const { notify, loading: notifyLoading } = useNotifyCustomer();
 
-  const handleMarkAsReady = async () => {
+  const orderTimeline = order ? (Array.isArray(order.timeline) ? order.timeline : []) : [];
+  const [localStatus, setLocalStatus] = useState<string>("pending");
+  const [localTimeline, setLocalTimeline] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+
+    setLocalStatus(String(order.status || "pending").toLowerCase());
+    setLocalTimeline(orderTimeline);
+  }, [order, orderTimeline]);
+
+  const transitionMap: Record<string, OrderStatus[]> = {
+    pending: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+    processing: [OrderStatus.READY, OrderStatus.CANCELLED],
+    preparing: [OrderStatus.READY, OrderStatus.CANCELLED],
+    ready: [OrderStatus.ONTRANSIT, OrderStatus.CANCELLED],
+    "on-transit": [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+    completed: [],
+    cancelled: [],
+  };
+
+  const canTransitionTo = (status: OrderStatus) => {
+    const normalized = String(localStatus || order?.status || "pending").toLowerCase();
+    return transitionMap[normalized]?.includes(status) ?? false;
+  };
+
+  const canMarkReady = canTransitionTo(OrderStatus.READY);
+
+  const updateLocalTimeline = (status: string) => {
+    setLocalTimeline((previous) => {
+      const normalized = status.toLowerCase();
+      const hasEvent = previous.some((event: any) => String(event.status).toLowerCase() === normalized);
+
+      const mapped = previous.map((event: any) => ({
+        ...event,
+        isCurrentStatus: String(event.status).toLowerCase() === normalized,
+      }));
+
+      if (hasEvent) {
+        return mapped;
+      }
+
+      return [
+        ...mapped,
+        {
+          status: normalized,
+          timestamp: new Date().toISOString(),
+          isCurrentStatus: true,
+        },
+      ];
+    });
+  };
+
+  const handleStatusChange = async (status: OrderStatus) => {
+    if (!canTransitionTo(status)) {
+      toast.error("This transition is not allowed from the current status.");
+      return;
+    }
+
     try {
-      await updateStatus(orderId, "READY");
-      alert("Order marked as ready!");
+      await updateStatus(orderId, status);
+      setLocalStatus(String(status).toLowerCase());
+      updateLocalTimeline(status);
+      toast.success(`Order status changed to ${status.replace("on-transit", "Picked up").replace("completed", "Delivered")}.`);
     } catch (err) {
-      alert("Failed to update order status");
+      toast.error("Failed to update order status. Please try again.");
       console.error(err);
     }
   };
@@ -80,8 +150,9 @@ export default function OrderDetailsPage() {
     preparing: "bg-orange-50 text-orange-700 border-orange-200",
     ready: "bg-green-50 text-green-700 border-green-200",
     pending: "bg-gray-50 text-gray-700 border-gray-200",
-    "picked up": "bg-blue-50 text-blue-700 border-blue-200",
-    delivered: "bg-green-50 text-green-700 border-green-200",
+    "on-transit": "bg-blue-50 text-blue-700 border-blue-200",
+    completed: "bg-green-50 text-green-700 border-green-200",
+    cancelled: "bg-red-50 text-red-700 border-red-200",
   };
 
   if (!order) {
@@ -106,7 +177,34 @@ export default function OrderDetailsPage() {
   const totalPrice = typeof order.totalPrice === "number" ? order.totalPrice : Number(order.totalPrice) || 0;
   const orderItems = Array.isArray(order.items) ? order.items : [];
   const itemCount = orderItems.length;
-  const orderTimeline = Array.isArray(order.timeline) ? order.timeline : [];
+  const currentStatus = String(localStatus || order?.status || "pending").toLowerCase();
+
+  const timelineSteps = [
+    { id: "pending", label: "Order received" },
+    { id: "processing", label: "Preparing" },
+    { id: "ready", label: "Ready for pickup" },
+    { id: "on-transit", label: "Picked up" },
+    { id: "completed", label: "Delivered" },
+  ];
+
+  const currentStepIndex = timelineSteps.findIndex((step) => step.id === currentStatus);
+  const statusEventTimes = new Map(
+    (localTimeline.length > 0 ? localTimeline : orderTimeline)
+      .filter((event: any) => event?.status)
+      .map((event: any) => [String(event.status).toLowerCase(), parseApiDate(event.timestamp)]),
+  );
+
+  const getStepTime = (id: string) => {
+    const stepDate = statusEventTimes.get(id);
+    return stepDate
+      ? stepDate.toLocaleString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          month: "short",
+          day: "numeric",
+        })
+      : "";
+  };
 
   const prepTime = Number(order.prepTime ?? 0);
   const riderArrivalTime = Number(order.riderArrivalTime ?? 0);
@@ -178,7 +276,7 @@ export default function OrderDetailsPage() {
 
                 <div className="min-w-0">
                   <h2 className="text-[20px] leading-[26px] font-semibold text-[#031927] truncate">{String(primaryItem?.name || "Order item")}</h2>
-                  <p className="text-[16px] leading-[26px] text-[#68798A] truncate">Quantity: <span className="font-bold">{primaryItem.quantity}</span>
+                  <p className="text-[16px] leading-[26px] text-[#68798A] truncate">Quantity: <span className="font-bold">{String(primaryItem?.quantity ?? "0")}</span>
                   </p>
                   <p className="text-[20px] leading-[26px] font-bold text-[#031927]">₦{totalPrice.toLocaleString()}</p>
                 </div>
@@ -261,35 +359,56 @@ export default function OrderDetailsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Order timeline</p>
-                  <p className="mt-2 text-sm text-slate-700">Track status progress below.</p>
+                  <p className="mt-2 text-sm text-slate-700">Track order progress from receipt to delivery.</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-4">
-                {orderTimeline.length > 0 ? (
-                  orderTimeline.map((event, index) => {
-                    const eventTimestamp = parseApiDate((event as any).timestamp);
-                    return (
-                      <div key={String((event as any).id ?? index)} className="flex items-start gap-4">
-                        <div className="flex flex-col items-center">
+                {timelineSteps.map((step, index) => {
+                  const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
+                  const isActive = index === currentStepIndex;
+                  const isFuture = index > currentStepIndex;
+                  const stepTime = getStepTime(step.id);
+
+                  return (
+                    <div key={step.id} className="flex items-start gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
+                            isCompleted
+                              ? "border-blue-500 bg-blue-500 text-white"
+                              : isActive
+                              ? "border-orange-500 bg-orange-500 text-white"
+                              : "border-slate-300 bg-white text-slate-500",
+                          )}
+                        >
+                          {isCompleted || isActive ? "✓" : index + 1}
+                        </div>
+                        {index < timelineSteps.length - 1 ? (
                           <div className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold",
-                            (event as any).isCurrentStatus ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-slate-500"
-                          )}>
-                            {(event as any).isCurrentStatus ? "✓" : index + 1}
-                          </div>
-                          {index < orderTimeline.length - 1 ? <div className="mt-1 h-full w-px bg-slate-200" /> : null}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">{String((event as any).status || "")}</p>
-                          <p className="mt-1 text-xs text-slate-500">{eventTimestamp ? eventTimestamp.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" }) : ""}</p>
-                        </div>
+                            "mt-1 h-full w-px",
+                            isCompleted ? "bg-blue-500" : "bg-slate-200",
+                          )} />
+                        ) : null}
                       </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-slate-500">No timeline events yet.</p>
-                )}
+                      <div className="min-w-0">
+                        <p className={cn(
+                          "text-sm font-semibold",
+                          isCompleted || isActive ? "text-slate-900" : "text-slate-500",
+                        )}>
+                          {step.label}
+                        </p>
+                        {stepTime ? (
+                          <p className="mt-1 text-xs text-slate-500">{stepTime}</p>
+                        ) : null}
+                        {isActive ? (
+                          <p className="mt-1 text-xs text-orange-600">In progress</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -352,23 +471,52 @@ export default function OrderDetailsPage() {
       </div>
 
       <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-row gap-4 md:flex-col lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-medium text-slate-500">Ready to take action?</p>
-            <p className="mt-1 max-w-2xl text-sm text-slate-700">Mark this order ready, contact the rider, or notify the customer directly from this view.</p>
+            <p className="mt-1 max-w-2xl text-sm text-slate-700">Update order status and keep the progress timeline in sync.</p>
           </div>
-          <div className="grid gap-3 grid-cols-3 md:grid-cols-1">
-            <Button variant="outline" className="rounded-full px-5 py-3">
-              <PhoneCall className="w-4 h-4 mr-2" />
-              Call Rider
-            </Button>
-            <Button variant="secondary" className="rounded-full px-5 py-3" onClick={handleNotifyCustomer} disabled={notifyLoading}>
-              {notifyLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
-              Notify Customer
-            </Button>
-            <Button className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700" onClick={handleMarkAsReady} disabled={updateLoading}>
+
+          <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-[1fr_auto]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button variant="outline" className="rounded-full px-5 py-3">
+                <PhoneCall className="w-4 h-4 mr-2" />
+                Call Rider
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="rounded-full px-5 py-3 flex items-center justify-center gap-2">
+                    <MoreHorizontal className="w-4 h-4" />
+                    More Actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.PROCESSING)}>
+                    Mark as Preparing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.READY)}>
+                    Mark as Ready for Pickup
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.ONTRANSIT)}>
+                    Mark as Picked Up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.COMPLETED)}>
+                    Mark as Delivered
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.CANCELLED)}>
+                    Cancel Order
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <Button
+              className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700"
+              onClick={() => handleStatusChange(OrderStatus.READY)}
+              disabled={updateLoading}
+            >
               {updateLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {updateLoading ? "Updating..." : "Mark Ready"}
+              {updateLoading ? "Updating..." : "Mark as Ready for Pickup"}
             </Button>
           </div>
         </div>

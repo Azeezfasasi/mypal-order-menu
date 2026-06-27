@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
+import { OrderStatus } from "@/types/enums";
 import ordersApi, { OrderFilter, OrderStats, Order } from "@/services/api/orders";
 
 const unwrapData = (value: any): any => {
@@ -216,8 +217,9 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
         
         const payload = unwrapData(response);
         const ordersList = payload?.data ?? payload?.orders ?? payload;
+        const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
         if (isMounted) {
-          setOrders(Array.isArray(ordersList) ? ordersList : []);
+          setOrders(normalizedOrders);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch active orders";
@@ -245,7 +247,8 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
       const response = await ordersApi.getActiveOrders(branchId);
       const payload = unwrapData(response);
       const ordersList = payload?.data ?? payload?.orders ?? (payload || []);
-      setOrders(Array.isArray(ordersList) ? ordersList : []);
+      const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
+      setOrders(normalizedOrders);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch active orders";
       setError(message);
@@ -339,7 +342,7 @@ export const useUpdateOrderStatus = () => {
   const [error, setError] = useState<string | null>(null);
 
   const updateStatus = useCallback(
-    async (orderId: string, status: "PROCESSING" | "READY" | "CANCELLED") => {
+    async (orderId: string, status: OrderStatus) => {
       try {
         setLoading(true);
         setError(null);

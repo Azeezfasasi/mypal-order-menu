@@ -1,4 +1,6 @@
 import { apiClient } from "@/services/api/api-client";
+import { ENDPOINTS } from "@/services/api/endpoints";
+import { OrderStatus } from "@/types/enums";
 
 export interface OrderFilter {
   status?: string;
@@ -142,13 +144,15 @@ export const ordersApi = {
 
   /**
    * Update order status
-   * PATCH /v1/business/order/{id}
+   * PATCH /v1/business/order/{id}?status={status}
    */
-  updateOrderStatus: async (orderId: string, status: "PROCESSING" | "READY" | "CANCELLED") => {
+  updateOrderStatus: async (orderId: string, status: OrderStatus) => {
     try {
-      const response = await apiClient.patch(`/business/order/${orderId}`, {
-        status,
-      });
+      const response = await apiClient.patch(
+        ENDPOINTS.BUSINESS.ORDER_STATUS_UPDATE(orderId),
+        undefined,
+        { params: { status } },
+      );
       return response.data;
     } catch (error) {
       console.error(`Error updating order ${orderId} status:`, error);
