@@ -5,7 +5,7 @@ import { useOrderById, useUpdateOrderStatus, useUploadMealPhoto, useNotifyCustom
 import { OrderStatus } from "@/types/enums";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload } from "lucide-react";
+import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload, MessageCircle, FileText } from "lucide-react";
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -233,7 +233,8 @@ export default function OrderDetailsPage() {
     return Number.isNaN(date.getTime()) ? null : date;
   };
 
-  const orderDate = parseApiDate(order.createdAt ?? order.orderDate);
+  // const orderDate = parseApiDate(order.createdAt ?? order.orderDate);
+  const orderDate = parseApiDate(order.requested_delivery_time);
   const formattedOrderDate = orderDate
     ? orderDate.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
     : "";
@@ -322,7 +323,7 @@ export default function OrderDetailsPage() {
 
         {/* Order details */}
         <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
-          <div className="border border-slate-200 bg-white p-0 shadow-sm">
+          <div className="border border-slate-200 bg-white shadow-sm px-3 py-2">
             <div className="grid gap-4 grid-cols-1 md:grid-cols-1 items-center">
               {/* Order item image and title */}
               <div className="flex items-center gap-4 py-4 md:py-2 px-4 md:px-2">
@@ -381,20 +382,81 @@ export default function OrderDetailsPage() {
 
             </div>
 
-            <div className="p-4">
-              {/* {primaryItem?.customerPreference ? ( */}
-                <p className="mt-3 text-sm font-medium text-slate-700">Preference: <span className="font-semibold text-slate-900">{String(primaryItem.customerPreference)}</span></p>
-              {/* ) : null} */}
+            <div className="flex flex-row justify-start items-center bg-[#FEF8E1] px-[13px] py-[7px] rounded-[10px] border border-[#FDE68A] text-[14px] my-4">
+              <div>
+                <FileText className="w-6 h-6 text-[#8E4E09]" />
+              </div>
+              <div className="flex flex-col ml-3">
+                <p className="text-[14.72px] leading-[30.95px] font-semibold text-[#8E4E09]">Customer preference</p>
+                <p className="text-[14.72px] leading-[30.95px font-medium text-[#1A1D21]">{String(primaryItem.customerPreference || "No preference provided")}</p>
+              </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 md:grid-cols-1 gap-4">
-              <div className="rounded-[24px] bg-slate-50 p-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Created</p>
+            {/* Order Timeline section */}
+            <div className="mt-5 space-y-4 hidden md:block px-4">
+              {timelineSteps.map((step, index) => {
+                const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
+                const isActive = index === currentStepIndex;
+                const isFuture = index > currentStepIndex;
+                const stepTime = getStepTime(step.id);
+
+                return (
+                  <div key={step.id} className="flex items-start gap-4">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
+                          isCompleted
+                            ? "border-blue-500 bg-blue-500 text-white"
+                            : isActive
+                            ? "border-orange-500 bg-orange-500 text-white"
+                            : "border-slate-300 bg-white text-slate-500",
+                        )}
+                      >
+                        {isCompleted || isActive ? "✓" : index + 1}
+                      </div>
+                      {index < timelineSteps.length - 1 ? (
+                        <div className={cn(
+                          "mt-1 h-full w-px",
+                          isCompleted ? "bg-blue-500" : "bg-slate-200",
+                        )} />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn(
+                        "text-sm font-semibold",
+                        isCompleted || isActive ? "text-slate-900" : "text-slate-500",
+                      )}>
+                        {step.label}
+                      </p>
+                      {stepTime ? (
+                        <p className="mt-1 text-xs text-slate-500">{stepTime}</p>
+                      ) : null}
+                      {isActive ? (
+                        <p className="mt-1 text-xs text-orange-600">In progress</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-1 gap-4">
+              <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
+                <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Requested Delivery Time</p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">{formattedOrderDate}</p>
               </div>
-              <div className="rounded-[24px] bg-slate-50 p-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Order ID</p>
+              <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
+                <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Order ID</p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">#{order.id}</p>
+              </div>
+              <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
+                <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Delivery Service</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{order.delivery_service}</p>
+              </div>
+              <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
+                <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Order Method</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{order.order_method}</p>
               </div>
             </div>
           </div>
@@ -429,6 +491,7 @@ export default function OrderDetailsPage() {
                 </div>
               </div>
 
+              {/* Order Timeline section */}
               <div className="mt-5 space-y-4">
                 {timelineSteps.map((step, index) => {
                   const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
@@ -517,13 +580,13 @@ export default function OrderDetailsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-slate-900">₦{Number(item?.price || 0).toLocaleString()}</p>
-                    {/* <p className="mt-2 text-xs text-slate-500">Line total</p> */}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Meal Verification section */}
           <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Meal Verification</p>
             <p className="mt-2 text-sm text-slate-700">Send meal confirmation to customer before dispatch.</p>
