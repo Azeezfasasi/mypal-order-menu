@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useOrderById, useUpdateOrderStatus, useNotifyCustomer } from "@/hooks/use-orders";
+import React, { useState, useEffect, useRef } from "react";
+import { useOrderById, useUpdateOrderStatus, useUploadMealPhoto, useNotifyCustomer } from "@/hooks/use-orders";
 import { OrderStatus } from "@/types/enums";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal } from "lucide-react";
+import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload } from "lucide-react";
+import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,11 +22,16 @@ export default function OrderDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const orderId = params.id as string;
-  const [mealPhoto, setMealPhoto] = useState<string | null>(null);
+  const [selectedMealPhotoFile, setSelectedMealPhotoFile] = useState<File | null>(null);
+  const [selectedMealPhotoPreview, setSelectedMealPhotoPreview] = useState<string | null>(null);
+  const [photoCapturedAt, setPhotoCapturedAt] = useState<Date | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch order from API only - no mock data
   const { order, loading: orderLoading, error: orderError } = useOrderById(orderId);
   const { updateStatus, loading: updateLoading } = useUpdateOrderStatus();
+  const { uploadPhoto, loading: uploadLoading } = useUploadMealPhoto();
   const { notify, loading: notifyLoading } = useNotifyCustomer();
 
   const orderTimeline = order ? (Array.isArray(order.timeline) ? order.timeline : []) : [];
@@ -45,7 +51,7 @@ export default function OrderDetailsPage() {
     pending: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
     processing: [OrderStatus.READY, OrderStatus.CANCELLED],
     preparing: [OrderStatus.READY, OrderStatus.CANCELLED],
-    ready: [OrderStatus.ONTRANSIT, OrderStatus.CANCELLED],
+    ready: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
     "on-transit": [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
     completed: [],
     cancelled: [],
@@ -56,7 +62,19 @@ export default function OrderDetailsPage() {
     return transitionMap[normalized]?.includes(status) ?? false;
   };
 
-  const canMarkReady = canTransitionTo(OrderStatus.READY);
+  const actionLabels: Record<OrderStatus, string> = {
+    [OrderStatus.PROCESSING]: "Mark as Processing",
+    [OrderStatus.READY]: "Mark as Ready for Pickup",
+    [OrderStatus.ONTRANSIT]: "Mark as Picked Up",
+    [OrderStatus.COMPLETED]: "Mark as Delivered",
+    [OrderStatus.CANCELLED]: "Cancel Order",
+    [OrderStatus.PENDING]: "Mark as Processing",
+    [OrderStatus.PREPARING]: "Mark as Ready for Pickup",
+  };
+
+  const normalizedCurrentStatus = String(localStatus || order?.status || "pending").toLowerCase() as OrderStatus;
+  const currentActionStatus = transitionMap[normalizedCurrentStatus]?.[0];
+  const mainActionLabel = currentActionStatus ? actionLabels[currentActionStatus] : "No action available";
 
   const updateLocalTimeline = (status: string) => {
     setLocalTimeline((previous) => {
@@ -104,10 +122,57 @@ export default function OrderDetailsPage() {
     try {
       await notify(orderId);
       alert("Customer notified!");
-      setMealPhoto(null);
+      setSelectedMealPhotoFile(null);
+      setSelectedMealPhotoPreview(null);
+      setPhotoCapturedAt(null);
     } catch (err) {
       alert("Failed to notify customer");
       console.error(err);
+    }
+  };
+
+  const handleMealPhotoSelected = async (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedMealPhotoFile(file);
+    setSelectedMealPhotoPreview(previewUrl);
+    setPhotoCapturedAt(new Date());
+  };
+
+  const handleUploadInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleMealPhotoSelected(file);
+  };
+
+  const handleOpenCamera = () => {
+    cameraInputRef.current?.click();
+  };
+
+  const handleOpenUploader = () => {
+    uploadInputRef.current?.click();
+  };
+
+  const handleCancelMealPhoto = () => {
+    setSelectedMealPhotoFile(null);
+    setSelectedMealPhotoPreview(null);
+    setPhotoCapturedAt(null);
+  };
+
+  const handleSendMealPhoto = async () => {
+    if (!selectedMealPhotoFile) {
+      toast.error("Please capture or select a meal photo first.");
+      return;
+    }
+
+    try {
+      const uploadedUrl = await uploadSingleFile(selectedMealPhotoFile);
+      await uploadPhoto(orderId, uploadedUrl);
+      await notify(orderId);
+      toast.success("Meal photo uploaded and customer notified successfully.");
+      handleCancelMealPhoto();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload meal photo. Please try again.");
     }
   };
 
@@ -159,8 +224,6 @@ export default function OrderDetailsPage() {
     return null; // Should not reach here due to loading state
   }
 
-  const statusLabel = String(order.status || "processing").replace(/^(\w)/, (match) => match.toUpperCase());
-
   const parseApiDate = (source: unknown): Date | null => {
     if (!source) return null;
     const value = typeof source === "string" || typeof source === "number" || source instanceof Date
@@ -178,6 +241,9 @@ export default function OrderDetailsPage() {
   const orderItems = Array.isArray(order.items) ? order.items : [];
   const itemCount = orderItems.length;
   const currentStatus = String(localStatus || order?.status || "pending").toLowerCase();
+  const statusLabel = String(currentStatus || order.status || "processing")
+    .replace(/(^|-)(\w)/g, (_, prefix, letter) => `${prefix || ""}${letter.toUpperCase()}`)
+    .replace("On-Transit", "Picked Up");
 
   const timelineSteps = [
     { id: "pending", label: "Order received" },
@@ -231,7 +297,7 @@ export default function OrderDetailsPage() {
 
         <div className="flex flex-row md:flex-col gap-2 justify-between md:justify-start">
           <p className="text-[14px] leading-[26px] font-semibold text-[#68798A]">Order <span className="text-[15px] text-[#363C44]">#{order.orderNumber}</span></p>
-          <div className={`inline-flex items-center rounded-full md:w-fit border px-4 py-2 text-sm font-semibold ${statusColors[String(order.status).toLowerCase()] || "border-slate-200 bg-slate-100 text-slate-700"}`}>
+          <div className={`inline-flex items-center rounded-full md:w-fit border px-4 py-2 text-sm font-semibold ${statusColors[currentStatus] || "border-slate-200 bg-slate-100 text-slate-700"}`}>
             {statusLabel}
           </div>
         </div>
@@ -459,13 +525,92 @@ export default function OrderDetailsPage() {
           </div>
 
           <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Verification</p>
-            <p className="mt-2 text-sm text-slate-700">Capture meal verification after packing.</p>
-            <div className="mt-5 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-              <Camera className="mx-auto mb-3 h-6 w-6 text-slate-400" />
-              <p className="font-semibold text-slate-900">Meal photo verification</p>
-              <p className="mt-2">No photo uploaded yet.</p>
+            <p className="text-sm font-medium text-slate-500">Meal Verification</p>
+            <p className="mt-2 text-sm text-slate-700">Send meal confirmation to customer before dispatch.</p>
+
+            <div className="mt-5 rounded-[28px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+              {selectedMealPhotoPreview ? (
+                <div className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+                  <Image
+                    src={selectedMealPhotoPreview}
+                    alt="Meal photo preview"
+                    width={640}
+                    height={420}
+                    className="h-64 w-full object-cover"
+                  />
+                  <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                    Captured at {photoCapturedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 py-10">
+                  <Camera className="h-10 w-10 text-slate-400" />
+                  <p className="font-semibold text-slate-900">Snap Meal Photo</p>
+                  <p className="max-w-sm text-sm text-slate-500">Take a quick photo of the completed order before dispatch.</p>
+                </div>
+              )}
             </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                className="rounded-full px-5 py-3 flex items-center justify-center gap-2"
+                onClick={handleOpenCamera}
+              >
+                <Camera className="w-4 h-4" />
+                Open Camera
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-full px-5 py-3 flex items-center justify-center gap-2"
+                onClick={handleOpenUploader}
+              >
+                <Upload className="w-4 h-4" />
+                Upload Image
+              </Button>
+            </div>
+
+            <div className="mt-4 flex flex-row gap-3 md:flex-col md:items-center md:justify-between">
+              <Button
+                className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700"
+                onClick={handleSendMealPhoto}
+                disabled={!selectedMealPhotoFile || uploadLoading}
+              >
+                {uploadLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {uploadLoading ? "Sending..." : "Send to customer"}
+              </Button>
+              <Button
+                variant="ghost"
+                className="rounded-full px-5 py-3 text-slate-700 hover:bg-slate-100"
+                onClick={handleCancelMealPhoto}
+                disabled={!selectedMealPhotoFile}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="ghost"
+                className="rounded-full px-5 py-3 text-slate-700 hover:bg-slate-100"
+                onClick={handleOpenCamera}
+              >
+                Retake
+              </Button>
+            </div>
+
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleUploadInputChange}
+            />
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUploadInputChange}
+            />
           </div>
         </div>
       </div>
@@ -491,19 +636,34 @@ export default function OrderDetailsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.PROCESSING)}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange(OrderStatus.PROCESSING)}
+                    disabled={!canTransitionTo(OrderStatus.PROCESSING)}
+                  >
                     Mark as Preparing
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.READY)}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange(OrderStatus.READY)}
+                    disabled={!canTransitionTo(OrderStatus.READY)}
+                  >
                     Mark as Ready for Pickup
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.ONTRANSIT)}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange(OrderStatus.ONTRANSIT)}
+                    disabled={!canTransitionTo(OrderStatus.ONTRANSIT)}
+                  >
                     Mark as Picked Up
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.COMPLETED)}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange(OrderStatus.COMPLETED)}
+                    disabled={!canTransitionTo(OrderStatus.COMPLETED)}
+                  >
                     Mark as Delivered
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusChange(OrderStatus.CANCELLED)}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange(OrderStatus.CANCELLED)}
+                    disabled={!canTransitionTo(OrderStatus.CANCELLED)}
+                  >
                     Cancel Order
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -512,11 +672,11 @@ export default function OrderDetailsPage() {
 
             <Button
               className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700"
-              onClick={() => handleStatusChange(OrderStatus.READY)}
-              disabled={updateLoading}
+              onClick={() => currentActionStatus ? handleStatusChange(currentActionStatus) : undefined}
+              disabled={updateLoading || !currentActionStatus}
             >
               {updateLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {updateLoading ? "Updating..." : "Mark as Ready for Pickup"}
+              {updateLoading ? "Updating..." : mainActionLabel}
             </Button>
           </div>
         </div>
