@@ -10,13 +10,13 @@ export function debugBusinessContext() {
   
   const state = useAuthStore.getState();
   
-  console.log("1️⃣ AUTH STORE STATE:");
-  console.log({
-    hasToken: !!state.token,
-    tokenLength: state.token?.length,
-    tokenType: state.tokenType,
-    hasBusiness: !!state.business,
-  });
+  // console.log("1️⃣ AUTH STORE STATE:");
+  // console.log({
+  //   hasToken: !!state.token,
+  //   tokenLength: state.token?.length,
+  //   tokenType: state.tokenType,
+  //   hasBusiness: !!state.business,
+  // });
 
   console.log("\n2️⃣ BUSINESS OBJECT:");
   if (state.business) {

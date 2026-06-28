@@ -43,19 +43,19 @@ export const requestInterceptor = async (
     if (!skipAuthHeader) {
       const token = useAuthStore.getState().token;
       const tokenType = useAuthStore.getState().tokenType;
-      console.log("🔐 [INTERCEPTOR] Token from store:", token ? "EXISTS" : "NULL/UNDEFINED");
-      console.log("🔐 [INTERCEPTOR] Auth store state:", {
-        token: token ? "***SET***" : "NOT_SET",
-        tokenType: tokenType || "NOT_SET",
-        business: useAuthStore.getState().business?.email || "NO_BUSINESS",
-        url: config.url
-      });
+      // console.log("🔐 [INTERCEPTOR] Token from store:", token ? "EXISTS" : "NULL/UNDEFINED");
+      // console.log("🔐 [INTERCEPTOR] Auth store state:", {
+      //   token: token ? "***SET***" : "NOT_SET",
+      //   tokenType: tokenType || "NOT_SET",
+      //   business: useAuthStore.getState().business?.email || "NO_BUSINESS",
+      //   url: config.url
+      // });
       
       if (token) {
         // Ensure token is properly formatted (should start with Bearer or be a raw JWT)
         const authValue = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
         config.headers.Authorization = authValue;
-        console.log("🔐 [INTERCEPTOR] Authorization header set");
+        // console.log("🔐 [INTERCEPTOR] Authorization header set");
       } else {
         console.warn("🔐 [INTERCEPTOR] No token available for this request");
       }

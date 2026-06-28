@@ -71,7 +71,10 @@ export const ordersApi = {
       if (filters.order) params.append("order", filters.order);
       if (filters.search) params.append("search", filters.search);
       if (filters.status) params.append("status", filters.status);
-      if (filters.branch_id) params.append("branch_id", filters.branch_id);
+      if (filters.branch_id) {
+        params.append("branch_id", filters.branch_id);
+        params.append("business_id", filters.branch_id);
+      }
       if (filters.startDate) params.append("startDate", filters.startDate);
       if (filters.endDate) params.append("endDate", filters.endDate);
       if (filters.timeFrame) params.append("timeFrame", filters.timeFrame);
@@ -90,7 +93,7 @@ export const ordersApi = {
    */
   getOrderStats: async (branchId?: string): Promise<OrderStats> => {
     try {
-      const params = branchId ? { branch_id: branchId } : {};
+      const params = branchId ? { branch_id: branchId, business_id: branchId } : {};
       const response = await apiClient.get("/business/orders/stats", { params });
       const payload = response.data?.data ?? response.data ?? {};
 
@@ -130,7 +133,7 @@ export const ordersApi = {
    */
   getScheduledOrders: async (branchId?: string) => {
     try {
-      const params = branchId ? { branch_id: branchId } : {};
+      const params = branchId ? { branch_id: branchId, business_id: branchId } : {};
       const response = await apiClient.get("/business/orders/scheduled", { params });
       return response.data;
     } catch (error) {
@@ -146,7 +149,9 @@ export const ordersApi = {
   getActiveOrders: async (branchId?: string) => {
     try {
       const params = branchId ? { branch_id: branchId } : {};
+      console.log("ordersApi.getActiveOrders params:", params);
       const response = await apiClient.get("/business/orders/active", { params });
+      console.log("ordersApi.getActiveOrders url:", response.config?.url, "params:", response.config?.params);
       return response.data;
     } catch (error) {
       console.error("Error fetching active orders:", error);

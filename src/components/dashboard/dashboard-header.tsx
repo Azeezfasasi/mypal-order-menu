@@ -54,7 +54,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       imageUrl: linkedBiz.image_url || null,
     }));
 
-  console.log("linked business", business, business?.linkedBusinesses);
+  // console.log("linked business", business, business?.linkedBusinesses);
 
   const searchParams = useSearchParams();
 

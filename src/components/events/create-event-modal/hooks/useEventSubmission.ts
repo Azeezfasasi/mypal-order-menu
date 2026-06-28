@@ -193,7 +193,7 @@ export const useEventSubmission = (
           // This mapping aligns with the API specification for /v1/events/create
           console.log("🔄 Performing API data mapping (dual format)...");
           const apiRequest = await mapFormToApiRequest(data, resolvedBusinessId);
-          console.log("📋 Mapped API request object:", apiRequest);
+          // console.log("📋 Mapped API request object:", apiRequest);
           
           const apiValidation = validateApiRequest(apiRequest);
           console.log("🔍 API validation result:", apiValidation);

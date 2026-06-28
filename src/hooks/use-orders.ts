@@ -11,6 +11,19 @@ const unwrapData = (value: any): any => {
   return value;
 };
 
+const extractArrayPayload = (payload: any): any => {
+  if (Array.isArray(payload)) return payload;
+  if (payload == null || typeof payload !== "object") return payload;
+
+  if (Array.isArray(payload.orders)) return payload.orders;
+  if (Array.isArray(payload.data)) return payload.data;
+
+  const arrayFields = Object.entries(payload).filter(([, value]) => Array.isArray(value));
+  if (arrayFields.length === 1) return arrayFields[0][1];
+
+  return payload;
+};
+
 const normalizeOrder = (rawOrder: any): Order => {
   const source = unwrapData(rawOrder);
   const details = source?.details ?? {};
@@ -77,6 +90,11 @@ interface UseOrdersResult {
   refetch: () => void;
 }
 
+const getOrdersFromResponse = (response: any): Order[] => {
+  const payload = extractArrayPayload(unwrapData(response));
+  return Array.isArray(payload) ? payload.map(normalizeOrder) : [];
+};
+
 export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,12 +107,9 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
         setLoading(true);
         setError(null);
         const response = await ordersApi.getOrders(filters);
-      
-        const payload = unwrapData(response);
-        const ordersList = payload?.data ?? payload?.orders ?? payload;
-        const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
+
         if (isMounted) {
-          setOrders(normalizedOrders);
+          setOrders(getOrdersFromResponse(response));
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch orders";
@@ -120,10 +135,7 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getOrders(filters);
-      const payload = unwrapData(response);
-      const ordersList = payload?.data ?? payload?.orders ?? payload;
-      const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
-      setOrders(normalizedOrders);
+      setOrders(getOrdersFromResponse(response));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch orders";
       setError(message);
@@ -202,7 +214,7 @@ interface UseActiveOrdersResult {
   refetch: () => void;
 }
 
-export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
+export const useActiveOrders = (branchId?: string | string[]): UseActiveOrdersResult => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,11 +225,35 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
       try {
         setLoading(true);
         setError(null);
-        const response = await ordersApi.getActiveOrders(branchId);
-        
-        const payload = unwrapData(response);
-        const ordersList = payload?.data ?? payload?.orders ?? payload;
-        const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
+        const branchIds = Array.isArray(branchId)
+          ? branchId.filter(Boolean)
+          : branchId
+          ? [branchId]
+          : [];
+
+        console.log("useActiveOrders start, branchIds:", branchIds);
+
+        let normalizedOrders: Order[] = [];
+
+        for (const id of branchIds) {
+          console.log("useActiveOrders trying branchId:", id);
+          const response = await ordersApi.getActiveOrders(id);
+          console.log("useActiveOrders response for id", id, response);
+          normalizedOrders = getOrdersFromResponse(response);
+          console.log("useActiveOrders normalized orders for id", id, normalizedOrders);
+          if (normalizedOrders.length > 0) {
+            break;
+          }
+        }
+
+        if (normalizedOrders.length === 0) {
+          console.log("useActiveOrders fallback to no branchId");
+          const response = await ordersApi.getActiveOrders();
+          console.log("useActiveOrders fallback response:", response);
+          normalizedOrders = getOrdersFromResponse(response);
+          console.log("useActiveOrders fallback normalized orders:", normalizedOrders);
+        }
+
         if (isMounted) {
           setOrders(normalizedOrders);
         }
@@ -244,11 +280,9 @@ export const useActiveOrders = (branchId?: string): UseActiveOrdersResult => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getActiveOrders(branchId);
-      const payload = unwrapData(response);
-      const ordersList = payload?.data ?? payload?.orders ?? (payload || []);
-      const normalizedOrders = Array.isArray(ordersList) ? ordersList.map(normalizeOrder) : [];
-      setOrders(normalizedOrders);
+      const resolvedBranchId = Array.isArray(branchId) ? branchId[0] : branchId;
+      const response = await ordersApi.getActiveOrders(resolvedBranchId);
+      setOrders(getOrdersFromResponse(response));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch active orders";
       setError(message);

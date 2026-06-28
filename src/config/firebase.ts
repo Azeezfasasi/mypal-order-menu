@@ -84,9 +84,9 @@ if (isBrowser()) {
         if (supported && app) {
           try {
             messaging = getMessaging(app);
-            console.log(
-              "Firebase messaging initialized in client (isSupported=true)",
-            );
+            // console.log(
+            //   "Firebase messaging initialized in client (isSupported=true)",
+            // );
           } catch (e) {
             console.warn("Firebase messaging getMessaging error:", e);
             messaging = null;

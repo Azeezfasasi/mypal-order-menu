@@ -237,14 +237,14 @@ export const useAuthStore = create<AuthState>()(
       }),
       // Add onRehydrateStorage for debugging/handling loading state
       onRehydrateStorage: () => {
-        console.log("Hydration started");
+        // console.log("Hydration started");
         return (state, error) => {
           if (error) {
             console.error("An error occurred during hydration", error);
           } else {
-            console.log(
-              "Hydration finished successfully. State is now applied.",
-            );
+            // console.log(
+            //   "Hydration finished successfully. State is now applied.",
+            // );
 
             // Ensure cookies are in sync with the hydrated state
             const { token, tokenType } = state || {};
@@ -373,7 +373,7 @@ export function useAuthStoreHydration() {
 
     // Zustand's 'persist' middleware sets this flag once hydration is complete
     if (useAuthStore.persist.hasHydrated()) {
-      console.log("Store already hydrated on mount.");
+      // console.log("Store already hydrated on mount.");
       if (isMounted) {
         setHydratedAction(); // Ensure isLoading is false if already hydrated
         setIsHydrated(true);

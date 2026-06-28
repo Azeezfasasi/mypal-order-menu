@@ -2,13 +2,13 @@ export const API_BASE_URL = (() => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   const nodeEnv = process.env.NODE_ENV;
 
-  console.log("🔧 API Configuration:", {
-    env: nodeEnv,
-    envUrl: envUrl ? "SET" : "NOT_SET",
-    finalUrl: envUrl || (nodeEnv === "production"
-      ? "⚠️ PRODUCTION but API_URL not set!"
-      : "staging-api.mypal-inc.com"),
-  });
+  // console.log("🔧 API Configuration:", {
+  //   env: nodeEnv,
+  //   envUrl: envUrl ? "SET" : "NOT_SET",
+  //   finalUrl: envUrl || (nodeEnv === "production"
+  //     ? "⚠️ PRODUCTION but API_URL not set!"
+  //     : "staging-api.mypal-inc.com"),
+  // });
 
   // In production, REQUIRE the env variable to be set
   if (nodeEnv === "production" && !envUrl) {

@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { OrdersInProgress } from "@/components/dashboard/orders-in-progress";
@@ -13,7 +13,15 @@ import Image from "next/image";
 
 export default function DashboardPage() {
   const business = useAuthStore((state) => state.business);
-  const branchId = business?.id ?? business?.linkedBusinesses?.[0]?.id ?? undefined;
+  const primaryLinkedBusinessId = business?.linkedBusinesses?.find((lb) => lb.is_primary)?.id;
+  const branchId =
+    primaryLinkedBusinessId ??
+    business?.id ??
+    (business as any)?.primaryBusinessId ??
+    (business as any)?.primary_business_id ??
+    business?.linkedBusinesses?.[0]?.id ??
+    undefined;
+  console.log("DashboardPage branchId:", branchId, "primaryLinkedBusinessId:", primaryLinkedBusinessId, "business:", business);
   const { stats, loading: statsLoading, error: statsError } = useOrderStats(branchId);
   const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders(branchId);
 

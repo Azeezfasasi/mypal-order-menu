@@ -20,24 +20,24 @@ export const logAxiosRequest = (config: AxiosRequestConfig) => {
   const isFormData = config.data instanceof FormData;
   const contentType = config.headers?.["Content-Type"] || config.headers?.["content-type"];
   
-  console.log("🚀 API Request:", {
-    url: `${config.baseURL}${config.url}`,
-    method: config.method?.toUpperCase(),
-    isFormData,
-    contentType: contentType || "NOT_SET",
-    headers: {
-      ...config.headers,
-      // Mask API key in logs for security
-      "X-API-Key": config.headers?.["X-API-Key"]
-        ? "***API_KEY_SET***"
-        : "NOT_SET",
-      Authorization: config.headers?.Authorization
-        ? "***BEARER_TOKEN_SET***"
-        : "NOT_SET",
-    },
-    dataType: isFormData ? "FormData" : typeof config.data,
-    dataSize: isFormData ? "FormData(entries: " + Array.from((config.data as FormData).keys()).length + ")" : "JSON",
-  });
+  // console.log("🚀 API Request:", {
+  //   url: `${config.baseURL}${config.url}`,
+  //   method: config.method?.toUpperCase(),
+  //   isFormData,
+  //   contentType: contentType || "NOT_SET",
+  //   headers: {
+  //     ...config.headers,
+  //     // Mask API key in logs for security
+  //     "X-API-Key": config.headers?.["X-API-Key"]
+  //       ? "***API_KEY_SET***"
+  //       : "NOT_SET",
+  //     Authorization: config.headers?.Authorization
+  //       ? "***BEARER_TOKEN_SET***"
+  //       : "NOT_SET",
+  //   },
+  //   dataType: isFormData ? "FormData" : typeof config.data,
+  //   dataSize: isFormData ? "FormData(entries: " + Array.from((config.data as FormData).keys()).length + ")" : "JSON",
+  // });
   
   if (isFormData) {
     console.log("📦 FormData entries being sent:");
@@ -79,11 +79,11 @@ export const validateApiConfiguration = () => {
 
   const isValid = !!(apiKey && baseUrl);
 
-  console.log("🔧 API Configuration Status:", {
-    apiKey: apiKey ? "***CONFIGURED***" : "❌ MISSING",
-    baseUrl: baseUrl ? "***CONFIGURED***" : "❌ MISSING",
-    isValid: isValid ? "✅ READY" : "❌ INVALID",
-  });
+  // console.log("🔧 API Configuration Status:", {
+  //   apiKey: apiKey ? "***CONFIGURED***" : "❌ MISSING",
+  //   baseUrl: baseUrl ? "***CONFIGURED***" : "❌ MISSING",
+  //   isValid: isValid ? "✅ READY" : "❌ INVALID",
+  // });
 
   return {
     isValid,
