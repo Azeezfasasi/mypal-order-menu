@@ -5,7 +5,7 @@ import { useOrderById, useUpdateOrderStatus, useUploadMealPhoto, useNotifyCustom
 import { OrderStatus } from "@/types/enums";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload, MessageCircle, FileText } from "lucide-react";
+import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload, MessageCircle, FileText, SendHorizontal, CircleX } from "lucide-react";
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -258,11 +258,36 @@ export default function OrderDetailsPage() {
   const statusEventTimes = new Map(
     (localTimeline.length > 0 ? localTimeline : orderTimeline)
       .filter((event: any) => event?.status)
-      .map((event: any) => [String(event.status).toLowerCase(), parseApiDate(event.timestamp)]),
+      .map((event: any) => {
+        const ts = event.timestamp ?? event.time ?? event.createdAt ?? event.created_at ?? event.date ?? event.created_at_date;
+        return [String(event.status).toLowerCase(), parseApiDate(ts)];
+      }),
   );
 
+  // Derive timestamps from top-level order fields when timeline events are not present
+  const o: any = order;
+  const derivedStatusTimestamps = new Map<string, Date | null>([
+    ["pending", parseApiDate(o.createdAt ?? o.created_at ?? o.createdAt)],
+    ["processing", parseApiDate(o.estimated_ready_time ?? o.requested_delivery_time ?? o.createdAt)],
+    ["preparing", parseApiDate(o.estimated_ready_time ?? o.requested_delivery_time ?? o.createdAt)],
+    ["ready", parseApiDate(o.actual_ready_time ?? o.estimated_ready_time ?? o.updatedAt)],
+    ["on-transit", parseApiDate(o.pickup_time ?? o.delivery?.pickup_time ?? o.updatedAt)],
+    ["completed", parseApiDate(o.updatedAt ?? o.completedAt ?? o.payment?.createdAt ?? o.updatedAt)],
+  ]);
+
+  // Merge explicit timeline events with derived timestamps (prefer explicit events)
+  const mergedStatusEventTimes = new Map<string, Date | null>(statusEventTimes as any);
+  for (const [k, v] of derivedStatusTimestamps.entries()) {
+    const stepIndex = timelineSteps.findIndex((s) => s.id === k);
+    // only add derived timestamps for steps that are already reached (completed or active)
+    if (stepIndex === -1) continue;
+    if (stepIndex <= currentStepIndex && !mergedStatusEventTimes.has(k) && v) {
+      mergedStatusEventTimes.set(k, v);
+    }
+  }
+
   const getStepTime = (id: string) => {
-    const stepDate = statusEventTimes.get(id);
+    const stepDate = mergedStatusEventTimes.get(id) as Date | null | undefined;
     return stepDate
       ? stepDate.toLocaleString("en-US", {
           hour: "2-digit",
@@ -323,10 +348,10 @@ export default function OrderDetailsPage() {
 
         {/* Order details */}
         <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
-          <div className="border border-slate-200 bg-white shadow-sm px-3 py-2">
+          <div className="gborder gborder-slate-200 bg-white shadow-sm px-0 py-0">
             <div className="grid gap-4 grid-cols-1 md:grid-cols-1 items-center">
               {/* Order item image and title */}
-              <div className="flex items-center gap-4 py-4 md:py-2 px-4 md:px-2">
+              <div className="flex items-center gap-4 py-4 md:py-2 px-4 md:px-0">
                 <div className="h-24 w-24 overflow-hidden rounded-[28px] bg-slate-100">
                   {typeof primaryItem?.imageUrl === "string" && primaryItem.imageUrl ? (
                     <Image
@@ -348,6 +373,9 @@ export default function OrderDetailsPage() {
                   <p className="text-[20px] leading-[26px] font-bold text-[#031927]">₦{totalPrice.toLocaleString()}</p>
                 </div>
               </div>
+
+              {/* horizontal line with gray color */}
+              <div className="border-t border-slate-200 hidden md:block" />
               
               {/* Customer data - add customer name, phone and photo */}
               {/* <div className="rounded-[24px] bg-slate-50 p-4">
@@ -359,15 +387,14 @@ export default function OrderDetailsPage() {
               </div> */}
 
               {/* Customer details */}
-              <div className="hidden md:block rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="hidden md:block rounded-[32px] md:border-none border border-slate-200 bg-white p-6 md:p-0 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Customer</p>
                     <p className="mt-2 text-xl font-semibold text-slate-950">{order.customer?.name || "Customer name not available"}</p>
                   </div>
-                  <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Customer</div>
                 </div>
-                <div className="mt-6 space-y-4 text-sm text-slate-700">
+                <div className="mt-4 space-y-4 text-sm text-slate-700">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Phone</p>
                     <p className="mt-1 text-base text-slate-900">{String(order.customer?.phone ?? "N/A")}</p>
@@ -393,7 +420,7 @@ export default function OrderDetailsPage() {
             </div>
 
             {/* Order Timeline section */}
-            <div className="mt-5 space-y-4 hidden md:block px-4">
+            <div className="mt-5 space-y-4 hidden md:block px-4 border border-collapse border-slate-200 rounded-[10px] py-4">
               {timelineSteps.map((step, index) => {
                 const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
                 const isActive = index === currentStepIndex;
@@ -436,15 +463,32 @@ export default function OrderDetailsPage() {
                         <p className="mt-1 text-xs text-orange-600">In progress</p>
                       ) : null}
                     </div>
+
+                    {/* Message and icon on the right side showing we are preparing your order */}
+                    <div className="ml-auto flex items-center gap-2">
+                      {isActive && step.id === "ready" ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                          <p className="text-xs text-orange-600">We’re preparing your delicious meal</p>
+                        </div>
+                      ) : null}
+                      {isActive && step.id === "processing" ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                          <p className="text-xs text-orange-600">We’re preparing your delicious meal</p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
             </div>
 
+            {/* Order details breakdown */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-1 gap-4">
               <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
                 <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Requested Delivery Time</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{formattedOrderDate}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{formattedOrderDate || "N/A"}</p>
               </div>
               <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
                 <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Order ID</p>
@@ -452,11 +496,11 @@ export default function OrderDetailsPage() {
               </div>
               <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
                 <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Delivery Service</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{order.delivery_service}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{String(order.delivery_service ?? order.deliveryService ?? "N/A")}</p>
               </div>
               <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-200">
                 <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Order Method</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{order.order_method}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{String(order.order_method ?? order.orderMethod ?? "N/A")}</p>
               </div>
             </div>
           </div>
@@ -591,7 +635,7 @@ export default function OrderDetailsPage() {
             <p className="text-sm font-medium text-slate-500">Meal Verification</p>
             <p className="mt-2 text-sm text-slate-700">Send meal confirmation to customer before dispatch.</p>
 
-            <div className="mt-5 rounded-[28px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+            <div className="mt-5 rounded-[28px] border border-[#DBDBDB] bg-slate-50 p-4 text-center text-sm text-slate-500">
               {selectedMealPhotoPreview ? (
                 <div className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white">
                   <Image
@@ -607,56 +651,57 @@ export default function OrderDetailsPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center gap-3 py-10">
-                  <Camera className="h-10 w-10 text-slate-400" />
-                  <p className="font-semibold text-slate-900">Snap Meal Photo</p>
-                  <p className="max-w-sm text-sm text-slate-500">Take a quick photo of the completed order before dispatch.</p>
+                  <Camera className="h-14 w-14 bg-[#FEF2EE] rounded-full p-2 text-orange-600" />
+                  <p className="text-[16px] font-semibold leading-[100%] text-[#031927]">Snap Meal Photo</p>
+                  <p className="max-w-sm text-[14px] font-normal leading-[100%] text-[#68798A]">Take a quick photo of the completed order before dispatch.</p>
                 </div>
               )}
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-3 grid-cols-2 md:grid-cols-2">
               <Button
-                variant="outline"
-                className="rounded-full px-5 py-3 flex items-center justify-center gap-2"
+                className="rounded-full px-5 py-3 flex items-center justify-center gap-2 text-[14px] text-[#031927] leading-[145%] bg-white border border-[#DB3A0780] hover:border-[#DB3A0780] hover:bg-white"
                 onClick={handleOpenCamera}
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-4 h-4 text-[#DB3A07]" />
                 Open Camera
               </Button>
               <Button
-                variant="outline"
-                className="rounded-full px-5 py-3 flex items-center justify-center gap-2"
+                className="rounded-full px-5 py-3 flex items-center justify-center gap-2 text-[14px] text-[#031927] leading-[145%] bg-white border border-[#DB3A0780] hover:border-[#DB3A0780] hover:bg-white"
                 onClick={handleOpenUploader}
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="w-4 h-4 text-[#DB3A07]" />
                 Upload Image
               </Button>
             </div>
 
-            <div className="mt-4 flex flex-row gap-3 md:flex-col md:items-center md:justify-between">
+            <div className="mt-4 flex flex-row gap-3 md:flex-col lg:flex-col md:items-center md:justify-between">
               <Button
                 className="rounded-full px-5 py-3 bg-orange-600 text-white hover:bg-orange-700"
                 onClick={handleSendMealPhoto}
                 disabled={!selectedMealPhotoFile || uploadLoading}
               >
+                <SendHorizontal className="w-4 h-4 mr-2" />
                 {uploadLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
                 {uploadLoading ? "Sending..." : "Send to customer"}
               </Button>
-              <Button
-                variant="ghost"
-                className="rounded-full px-5 py-3 text-slate-700 hover:bg-slate-100"
-                onClick={handleCancelMealPhoto}
-                disabled={!selectedMealPhotoFile}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="ghost"
-                className="rounded-full px-5 py-3 text-slate-700 hover:bg-slate-100"
-                onClick={handleOpenCamera}
-              >
-                Retake
-              </Button>
+             <div className="flex flex-row gap-3 items-center justify-between">
+                <Button
+                  className="text-[14px] leading-[145%] font-semibold text-[#031927] bg-white border border-[#DBDBDB] px-4 py-2 rounded-[8px] hover:border-[#DB3A0780] hover:bg-white"
+                  onClick={handleCancelMealPhoto}
+                  disabled={!selectedMealPhotoFile}
+                >
+                  <CircleX className="w-4 h-4 mr-2 text-[#DB3A07]" />
+                  Cancel
+                </Button>
+                <Button
+                  className="text-[14px] leading-[145%] font-semibold text-[#031927] bg-white border border-[#DB3A0780] px-4 py-2 rounded-[8px] hover:border-[#DB3A0780] hover:bg-white"
+                  onClick={handleOpenCamera}
+                >
+                  <Camera className="w-4 h-4 text-[#DB3A07]" />
+                  Retake
+                </Button>
+             </div>
             </div>
 
             <input
@@ -685,15 +730,15 @@ export default function OrderDetailsPage() {
             <p className="mt-1 max-w-2xl text-sm text-slate-700">Update order status and keep the progress timeline in sync.</p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-[1fr_auto]">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button variant="outline" className="rounded-full px-5 py-3">
-                <PhoneCall className="w-4 h-4 mr-2" />
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-1">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-2">
+              <Button className="px-5 py-6 bg-[#29967F1A] text-[#29967F] text-[14px] leading-[15px] font-semibold hover:bg-[#29967F1A] flex flex-col items-center justify-center gap-1 rounded-[10px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-motorbike-icon lucide-motorbike"><path d="m18 14-1-3"/><path d="m3 9 6 2a2 2 0 0 1 2-2h2a2 2 0 0 1 1.99 1.81"/><path d="M8 17h3a1 1 0 0 0 1-1 6 6 0 0 1 6-6 1 1 0 0 0 1-1v-.75A5 5 0 0 0 17 5"/><circle cx="19" cy="17" r="3"/><circle cx="5" cy="17" r="3"/></svg>
                 Call Rider
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="rounded-full px-5 py-3 flex items-center justify-center gap-2">
+                  <Button className="px-5 py-6 bg-[#FEF2EE47] text-[#031927] text-[14px] leading-[15px] font-semibold hover:bg-white flex flex-col items-center justify-center gap-1 rounded-[10px] border border-[#DBDBDB]">
                     <MoreHorizontal className="w-4 h-4" />
                     More Actions
                   </Button>

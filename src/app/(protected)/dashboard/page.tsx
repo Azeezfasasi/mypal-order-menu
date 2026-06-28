@@ -12,9 +12,10 @@ import Image from "next/image";
 // import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { stats, loading: statsLoading, error: statsError } = useOrderStats();
-  const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders();
   const business = useAuthStore((state) => state.business);
+  const branchId = business?.id ?? business?.linkedBusinesses?.[0]?.id ?? undefined;
+  const { stats, loading: statsLoading, error: statsError } = useOrderStats(branchId);
+  const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders(branchId);
 
   // Check if error is an authorization error
   const isAuthorizationError = (error: string | null) => {
@@ -137,8 +138,8 @@ export default function DashboardPage() {
               }
               number={stats.completedToday || 0}
               label="Completed Today"
-              subtext={`↑ ${stats.completionRate || 0}%`}
-              subtextColor="green"
+              subtext={`${stats.delayedPercentage || 0}%`}
+              subtextColor="red"
               subtextIcon={<Image src="/images/completedarrow.svg" alt="Arrow Up" width={12} height={12} />}
               bgColor="bg-green-50"
             />

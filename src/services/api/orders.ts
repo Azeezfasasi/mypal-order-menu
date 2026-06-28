@@ -22,6 +22,7 @@ export interface OrderStats {
   ridersETA: string;
   completedToday: number;
   completionRate: number;
+  delayedPercentage: number;
   delayedOrders: number;
 }
 
@@ -91,7 +92,32 @@ export const ordersApi = {
     try {
       const params = branchId ? { branch_id: branchId } : {};
       const response = await apiClient.get("/business/orders/stats", { params });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data ?? {};
+
+      const statsSource = payload || {};
+
+      // If API returns nested counts (e.g., { counts: { all: 3 } }) prefer that for active orders
+      const countsAll = statsSource?.counts?.all ?? statsSource?.counts?.total ?? null;
+
+      const normalizeNumber = (v: any) => {
+        if (v == null) return 0;
+        if (typeof v === "number") return v;
+        const n = Number(v);
+        return Number.isNaN(n) ? 0 : n;
+      };
+
+      const stats: OrderStats = {
+        activeOrders: normalizeNumber(countsAll ?? statsSource.activeOrders ?? statsSource.active_orders ?? statsSource.active_order_count ?? statsSource.active ?? statsSource.active_order ?? 0),
+        newOrders: normalizeNumber(statsSource.newOrders ?? statsSource.new_orders ?? statsSource.new_order_count ?? statsSource.new ?? 0),
+        ridersIncoming: normalizeNumber(statsSource.ridersIncoming ?? statsSource.riders_incoming ?? statsSource.riders_incoming_count ?? statsSource.riders ?? 0),
+        ridersETA: statsSource.ridersETA ?? statsSource.riders_eta ?? statsSource.riders_eta_string ?? String(statsSource.riders_estimate ?? "N/A"),
+        completedToday: normalizeNumber(statsSource.completedToday ?? statsSource.completed_today ?? statsSource.completed_today_count ?? statsSource.completed ?? 0),
+        completionRate: normalizeNumber(statsSource.completionRate ?? statsSource.completion_rate ?? statsSource.completion_percentage ?? statsSource.completion ?? 0),
+        delayedPercentage: normalizeNumber(statsSource.delayedPercentage ?? statsSource.delayed_percentage ?? statsSource.delayed_percentage ?? statsSource.delayed_percentage ?? 0),
+        delayedOrders: normalizeNumber(statsSource.delayedOrders ?? statsSource.delayed ?? statsSource.delayed_orders ?? statsSource.delayed_count ?? 0),
+      };
+
+      return stats;
     } catch (error) {
       console.error("Error fetching order stats:", error);
       throw error;

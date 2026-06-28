@@ -37,8 +37,8 @@ export function StatusFilter({
         isActive ? "border-2 border-orange-400" : "border border-slate-200 hover:border-slate-300 bg-white",
       )}
     >
-      <span className={cn("text-[13px] font-semibold uppercase tracking-[0.12em]", isActive ? "text-[#C2410C]" : "text-slate-500")}>{label}</span>
-      <span className={cn("text-[18px] font-bold", isActive ? "text-[#C2410C]" : "text-slate-900")}>{count}</span>
+      <span className={cn("text-[13px] md:text-[11px] mx-auto font-semibold uppercase tracking-[0.12em]", isActive ? "text-[#C2410C]" : "text-slate-500")}>{label}</span>
+      <span className={cn("text-[18px] font-bold mx-auto", isActive ? "text-[#C2410C]" : "text-slate-900")}>{count}</span>
     </button>
   );
 }
@@ -103,10 +103,10 @@ export function OrderListItem({
       onClick={onClick}
       className="bg-white rounded-[24px] border border-slate-200 shadow-sm hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
     >
-      <div className="grid grid-cols-2 md:grid-cols-1 p-5 md:px-2">
+      <div className="grid grid-cols-2 md:grid-cols-1 p-5 md:px-2 w-full">
           <div className="flex flex-col justify-start items-start gap-4">
             {/* Order details */}
-            <div className="flex flex-row zmd:flex-col items-start justify-between gap-4">
+            <div className="flex flex-row items-start justify-between gap-4">
               <div className="relative sh-[120px] sw-[140px] overflow-hidden rounded-[24px] bg-slate-100">
                 {itemImage ? (
                   <Image src={itemImage} alt={itemTitle || "Order item"} width={85} height={82} className="object-cover w-[170px] h-[100px]" />
@@ -117,7 +117,7 @@ export function OrderListItem({
               <div className="min-w-0">
                 <p className="text-[14px] md:text-[11px] uppercase leading-[26px] font-extrabold stracking-[0.24em] text-black truncate">#{orderNumber}</p>
                 <div className="flex items-center gap-2">
-                  <span className={cn("hidden md:inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
+                  <span className={cn("hidden md:inline-flex lg:inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
                   {createdAtLabel ? (
                     <p className="mt-1 text-xs text-slate-400">{createdAtLabel}</p>
                   ) : null}
@@ -129,20 +129,20 @@ export function OrderListItem({
                   <span className="truncate">{location}</span>
                 </div>
               </div>
-              <span className={cn("md:hidden inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
+              <span className={cn("md:hidden lg:hidden inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
             </div>
 
             {/* Prep time and rider time */}
-            <div className="w-full grid gap-3 grid-cols-2 border-t border-slate-200 pt-2">
-              <div className="rounded-[24px] bg-slate-50 p-4">
+            <div className="w-full grid gap-3 grid-cols-2 flex-1 min-w-[400px] md:min-w-0 lg:min-w-[300px] border-t border-slate-200 pt-2">
+            {/* <div className="w-full flex flex-row justify-start flex-1 min-w-[300px] border-t border-slate-200 pt-2"> */}
+              <div className="rounded-[24px] bg-slate-50 p-4 flex-1">
                 <p className="text-[12px] uppercase leading-[26px] font-medium text-[#68798A]">Prep time</p>
                 <p className="text-[14px] leading-[26px] font-semibold text-[#DB3A07]">{prepTime} mins left</p>
-                {/* Make this bar to read the prepTime */}
                 <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
                   <div className="h-full w-1/2 rounded-full bg-[#F97316]" />
                 </div>
               </div>
-              <div className="rounded-[24px] bg-slate-50 p-4">
+              <div className="rounded-[24px] bg-slate-50 p-4 flex-1">
                 <p className="text-[12px] uppercase leading-[26px] font-medium text-[#68798A]">Rider arrival</p>
                 <p className="text-[14px] leading-[26px] font-semibold text-[#0EA5E9]">{riderArrivalTime} mins away</p>
                 <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
@@ -152,7 +152,7 @@ export function OrderListItem({
             </div>
 
             {customerPreference ? (
-              <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto">
+              <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto flex items-center justify-center gap-1 flex-1 xmin-w-[100%] lg:min-w-[40vw]">
                 <span className="font-medium">Customer preference:</span> <span className="font-bold">{customerPreference}</span>
               </div>
             ) : null}

@@ -193,7 +193,7 @@ export default function OrdersPage() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
             {filteredOrders.map((order: Order) => (
               <OrderListItem
                 key={order.id}
