@@ -14,14 +14,14 @@ import Image from "next/image";
 export default function DashboardPage() {
   const business = useAuthStore((state) => state.business);
   const primaryLinkedBusinessId = business?.linkedBusinesses?.find((lb) => lb.is_primary)?.id;
+  const businessExt = business as unknown as Record<string, unknown> | null;
   const branchId =
     primaryLinkedBusinessId ??
     business?.id ??
-    (business as any)?.primaryBusinessId ??
-    (business as any)?.primary_business_id ??
+    (businessExt?.primaryBusinessId as string | undefined) ??
+    (businessExt?.primary_business_id as string | undefined) ??
     business?.linkedBusinesses?.[0]?.id ??
     undefined;
-  console.log("DashboardPage branchId:", branchId, "primaryLinkedBusinessId:", primaryLinkedBusinessId, "business:", business);
   const { stats, loading: statsLoading, error: statsError } = useOrderStats(branchId);
   const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders(branchId);
 

@@ -47,7 +47,7 @@ export interface TimelineEvent {
 export interface Order {
   id: string;
   orderNumber: string | number;
-  status: "pending" | "processing" | "ready" | "completed" | "cancelled";
+  status: "pending" | "processing" | "preparing" | "ready" | "on-transit" | "completed" | "cancelled";
   items?: OrderItem[];
   customer?: OrderCustomer;
   prepTime?: number;
@@ -102,7 +102,7 @@ export const ordersApi = {
       // If API returns nested counts (e.g., { counts: { all: 3 } }) prefer that for active orders
       const countsAll = statsSource?.counts?.all ?? statsSource?.counts?.total ?? null;
 
-      const normalizeNumber = (v: any) => {
+      const normalizeNumber = (v: unknown) => {
         if (v == null) return 0;
         if (typeof v === "number") return v;
         const n = Number(v);
@@ -181,13 +181,15 @@ export const ordersApi = {
     try {
       const response = await apiClient.patch(
         ENDPOINTS.BUSINESS.ORDER_STATUS_UPDATE(orderId),
-        undefined,
+        {},
         { params: { status } },
       );
       return response.data;
     } catch (error) {
+      const apiMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       console.error(`Error updating order ${orderId} status:`, error);
-      throw error;
+      throw new Error(apiMessage ?? (error instanceof Error ? error.message : "Failed to update order status"));
     }
   },
 

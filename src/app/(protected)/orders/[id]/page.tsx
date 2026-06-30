@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useOrderById, useUpdateOrderStatus, useUploadMealPhoto, useNotifyCustomer } from "@/hooks/use-orders";
+import { TimelineEvent, OrderItem } from "@/services/api/orders";
 import { OrderStatus } from "@/types/enums";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Phone, Camera, PhoneCall, AlertCircle, Loader, MoreHorizontal, Upload, MessageCircle, FileText, SendHorizontal, CircleX } from "lucide-react";
+import { ChevronLeft, Camera, AlertCircle, Loader, MoreHorizontal, Upload, FileText, SendHorizontal, CircleX } from "lucide-react";
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,11 +33,11 @@ export default function OrderDetailsPage() {
   const { order, loading: orderLoading, error: orderError } = useOrderById(orderId);
   const { updateStatus, loading: updateLoading } = useUpdateOrderStatus();
   const { uploadPhoto, loading: uploadLoading } = useUploadMealPhoto();
-  const { notify, loading: notifyLoading } = useNotifyCustomer();
+  const { notify } = useNotifyCustomer();
 
   const orderTimeline = order ? (Array.isArray(order.timeline) ? order.timeline : []) : [];
   const [localStatus, setLocalStatus] = useState<string>("pending");
-  const [localTimeline, setLocalTimeline] = useState<any[]>([]);
+  const [localTimeline, setLocalTimeline] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
     if (!order) {
@@ -44,8 +45,8 @@ export default function OrderDetailsPage() {
     }
 
     setLocalStatus(String(order.status || "pending").toLowerCase());
-    setLocalTimeline(orderTimeline);
-  }, [order, orderTimeline]);
+    setLocalTimeline(Array.isArray(order.timeline) ? order.timeline : []);
+  }, [order]);
 
   const transitionMap: Record<string, OrderStatus[]> = {
     pending: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
@@ -79,9 +80,9 @@ export default function OrderDetailsPage() {
   const updateLocalTimeline = (status: string) => {
     setLocalTimeline((previous) => {
       const normalized = status.toLowerCase();
-      const hasEvent = previous.some((event: any) => String(event.status).toLowerCase() === normalized);
+      const hasEvent = previous.some((event: TimelineEvent) => String(event.status).toLowerCase() === normalized);
 
-      const mapped = previous.map((event: any) => ({
+      const mapped = previous.map((event: TimelineEvent) => ({
         ...event,
         isCurrentStatus: String(event.status).toLowerCase() === normalized,
       }));
@@ -94,7 +95,7 @@ export default function OrderDetailsPage() {
         ...mapped,
         {
           status: normalized,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date(),
           isCurrentStatus: true,
         },
       ];
@@ -113,20 +114,8 @@ export default function OrderDetailsPage() {
       updateLocalTimeline(status);
       toast.success(`Order status changed to ${status.replace("on-transit", "Picked up").replace("completed", "Delivered")}.`);
     } catch (err) {
-      toast.error("Failed to update order status. Please try again.");
-      console.error(err);
-    }
-  };
-
-  const handleNotifyCustomer = async () => {
-    try {
-      await notify(orderId);
-      alert("Customer notified!");
-      setSelectedMealPhotoFile(null);
-      setSelectedMealPhotoPreview(null);
-      setPhotoCapturedAt(null);
-    } catch (err) {
-      alert("Failed to notify customer");
+      const message = err instanceof Error ? err.message : "Failed to update order status. Please try again.";
+      toast.error(message);
       console.error(err);
     }
   };
@@ -257,26 +246,25 @@ export default function OrderDetailsPage() {
   const currentStepIndex = timelineSteps.findIndex((step) => step.id === currentStatus);
   const statusEventTimes = new Map(
     (localTimeline.length > 0 ? localTimeline : orderTimeline)
-      .filter((event: any) => event?.status)
-      .map((event: any) => {
-        const ts = event.timestamp ?? event.time ?? event.createdAt ?? event.created_at ?? event.date ?? event.created_at_date;
+      .filter((event: TimelineEvent) => event?.status)
+      .map((event: TimelineEvent): [string, Date | null] => {
+        const ts = (event.timestamp as unknown) ?? event.time ?? event.createdAt ?? event.created_at ?? event.date ?? event.created_at_date;
         return [String(event.status).toLowerCase(), parseApiDate(ts)];
       }),
   );
 
   // Derive timestamps from top-level order fields when timeline events are not present
-  const o: any = order;
   const derivedStatusTimestamps = new Map<string, Date | null>([
-    ["pending", parseApiDate(o.createdAt ?? o.created_at ?? o.createdAt)],
-    ["processing", parseApiDate(o.estimated_ready_time ?? o.requested_delivery_time ?? o.createdAt)],
-    ["preparing", parseApiDate(o.estimated_ready_time ?? o.requested_delivery_time ?? o.createdAt)],
-    ["ready", parseApiDate(o.actual_ready_time ?? o.estimated_ready_time ?? o.updatedAt)],
-    ["on-transit", parseApiDate(o.pickup_time ?? o.delivery?.pickup_time ?? o.updatedAt)],
-    ["completed", parseApiDate(o.updatedAt ?? o.completedAt ?? o.payment?.createdAt ?? o.updatedAt)],
+    ["pending", parseApiDate(order.createdAt ?? order.created_at)],
+    ["processing", parseApiDate(order.estimated_ready_time ?? order.requested_delivery_time ?? order.createdAt)],
+    ["preparing", parseApiDate(order.estimated_ready_time ?? order.requested_delivery_time ?? order.createdAt)],
+    ["ready", parseApiDate(order.actual_ready_time ?? order.estimated_ready_time ?? order.updatedAt)],
+    ["on-transit", parseApiDate(order.pickup_time ?? (order.delivery as Record<string, unknown>)?.pickup_time ?? order.updatedAt)],
+    ["completed", parseApiDate(order.updatedAt ?? order.completedAt ?? (order.payment as Record<string, unknown>)?.createdAt)],
   ]);
 
   // Merge explicit timeline events with derived timestamps (prefer explicit events)
-  const mergedStatusEventTimes = new Map<string, Date | null>(statusEventTimes as any);
+  const mergedStatusEventTimes = new Map<string, Date | null>(statusEventTimes);
   for (const [k, v] of derivedStatusTimestamps.entries()) {
     const stepIndex = timelineSteps.findIndex((s) => s.id === k);
     // only add derived timestamps for steps that are already reached (completed or active)
@@ -415,16 +403,15 @@ export default function OrderDetailsPage() {
               </div>
               <div className="flex flex-col ml-3">
                 <p className="text-[14.72px] leading-[30.95px] font-semibold text-[#8E4E09]">Customer preference</p>
-                <p className="text-[14.72px] leading-[30.95px font-medium text-[#1A1D21]">{String(primaryItem.customerPreference || "No preference provided")}</p>
+                <p className="text-[14.72px] leading-[30.95px] font-medium text-[#1A1D21]">{String(primaryItem?.customerPreference || "No preference provided")}</p>
               </div>
             </div>
 
             {/* Order Timeline section */}
             <div className="mt-5 space-y-4 hidden md:block px-4 border border-collapse border-slate-200 rounded-[10px] py-4">
               {timelineSteps.map((step, index) => {
-                const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
+                const isCompleted = index < currentStepIndex || (currentStepIndex === -1 && step.id === "pending");
                 const isActive = index === currentStepIndex;
-                const isFuture = index > currentStepIndex;
                 const stepTime = getStepTime(step.id);
 
                 return (
@@ -538,9 +525,8 @@ export default function OrderDetailsPage() {
               {/* Order Timeline section */}
               <div className="mt-5 space-y-4">
                 {timelineSteps.map((step, index) => {
-                  const isCompleted = index < currentStepIndex || currentStepIndex === -1 && step.id === "pending";
+                  const isCompleted = index < currentStepIndex || (currentStepIndex === -1 && step.id === "pending");
                   const isActive = index === currentStepIndex;
-                  const isFuture = index > currentStepIndex;
                   const stepTime = getStepTime(step.id);
 
                   return (
@@ -598,7 +584,7 @@ export default function OrderDetailsPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              {orderItems.map((item: any, index: number) => (
+              {orderItems.map((item: OrderItem, index: number) => (
                 <div key={String(item?.id ?? index)} className="grid gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto]">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-20 w-20 overflow-hidden rounded-3xl bg-white">
@@ -733,7 +719,7 @@ export default function OrderDetailsPage() {
           <div className="grid gap-3 grid-cols-1 md:grid-cols-1">
             <div className="grid gap-3 grid-cols-2 md:grid-cols-2">
               <Button className="px-5 py-6 bg-[#29967F1A] text-[#29967F] text-[14px] leading-[15px] font-semibold hover:bg-[#29967F1A] flex flex-col items-center justify-center gap-1 rounded-[10px]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-motorbike-icon lucide-motorbike"><path d="m18 14-1-3"/><path d="m3 9 6 2a2 2 0 0 1 2-2h2a2 2 0 0 1 1.99 1.81"/><path d="M8 17h3a1 1 0 0 0 1-1 6 6 0 0 1 6-6 1 1 0 0 0 1-1v-.75A5 5 0 0 0 17 5"/><circle cx="19" cy="17" r="3"/><circle cx="5" cy="17" r="3"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-motorbike-icon lucide-motorbike"><path d="m18 14-1-3"/><path d="m3 9 6 2a2 2 0 0 1 2-2h2a2 2 0 0 1 1.99 1.81"/><path d="M8 17h3a1 1 0 0 0 1-1 6 6 0 0 1 6-6 1 1 0 0 0 1-1v-.75A5 5 0 0 0 17 5"/><circle cx="19" cy="17" r="3"/><circle cx="5" cy="17" r="3"/></svg>
                 Call Rider
               </Button>
               <DropdownMenu>

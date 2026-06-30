@@ -12,11 +12,13 @@ interface StatusFilterProps {
 
 const statusColorMap: Record<string, string> = {
   All: "text-orange-700 bg-orange-100 border-orange-200",
+  Processing: "text-[#92400E] bg-[#FEF3C7] border-[#F59E0B]",
   Pending: "text-[#B45309] bg-[#FFEDD5] border-[#FCD34D]",
   Preparing: "text-[#BE123C] bg-[#FCE7F3] border-[#F9A8D4]",
   Ready: "text-[#0C4A6E] bg-[#E0F2FE] border-[#7DD3FC]",
   "Picked Up": "text-[#6D28D9] bg-[#EEF2FF] border-[#C4B5FD]",
   Delivered: "text-[#047857] bg-[#D1FAE5] border-[#86EFAC]",
+  Cancelled: "text-[#9F1239] bg-[#FFF1F2] border-[#FECDD3]",
 };
 
 export function StatusFilter({
@@ -25,16 +27,12 @@ export function StatusFilter({
   isActive,
   onClick,
 }: StatusFilterProps) {
-  const badgeClass = isActive
-    ? "bg-[#FFF7ED] text-[#C2410C] border-[#F59E0B] shadow-sm"
-    : statusColorMap[label] || "bg-white text-slate-900 border border-slate-200";
-
   return (
     <button
       onClick={onClick}
       className={cn(
         "rounded-3xl px-4 md:px-2 py-4 md:py-2 flex flex-col items-start gap-2 transition-all zmin-w-[130px] text-left",
-        isActive ? "border-2 border-orange-400" : "border border-slate-200 hover:border-slate-300 bg-white",
+        isActive ? "border-2 border-orange-400" : `border ${statusColorMap[label] ?? "border-slate-200 bg-white"}`,
       )}
     >
       <span className={cn("text-[13px] md:text-[11px] mx-auto font-semibold uppercase tracking-[0.12em]", isActive ? "text-[#C2410C]" : "text-slate-500")}>{label}</span>
@@ -64,10 +62,14 @@ const statusBadgeMap: Record<string, string> = {
   Ready: "bg-[#DBEAFE] text-[#1D4ED8] border-[#93C5FD]",
   "Picked Up": "bg-[#EDE9FE] text-[#6D28D9] border-[#C4B5FD]",
   Delivered: "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]",
+  Cancelled: "bg-[#FFF1F2] text-[#9F1239] border-[#FECDD3]",
 };
 
 const formatStatusLabel = (status: string) => {
   if (!status) return "Unknown";
+  const lower = status.toLowerCase();
+  if (lower === "on-transit") return "Picked Up";
+  if (lower === "completed") return "Delivered";
   return status
     .toString()
     .split(" ")

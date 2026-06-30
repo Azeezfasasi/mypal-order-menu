@@ -499,7 +499,7 @@ const createBusinessOverviewAndRevenueApi = () => {
           const { id, status } = variables;
           const response = await apiClient.patch(
             ENDPOINTS.BUSINESS.ORDER_STATUS_UPDATE(id),
-            undefined,
+            {},
             { params: { status } },
           );
           return response.data;

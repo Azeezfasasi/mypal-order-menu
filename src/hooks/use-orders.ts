@@ -4,48 +4,80 @@ import { useState, useEffect, useCallback } from "react";
 import { OrderStatus } from "@/types/enums";
 import ordersApi, { OrderFilter, OrderStats, Order } from "@/services/api/orders";
 
-const unwrapData = (value: any): any => {
+const unwrapData = (value: unknown): unknown => {
   if (value == null) return value;
   if (Array.isArray(value)) return value;
-  if (typeof value === "object" && value.data !== undefined) return unwrapData(value.data);
+  if (typeof value === "object" && value !== null && (value as Record<string, unknown>).data !== undefined) {
+    return unwrapData((value as Record<string, unknown>).data);
+  }
   return value;
 };
 
-const extractArrayPayload = (payload: any): any => {
+const extractArrayPayload = (payload: unknown): unknown => {
   if (Array.isArray(payload)) return payload;
   if (payload == null || typeof payload !== "object") return payload;
-
-  if (Array.isArray(payload.orders)) return payload.orders;
-  if (Array.isArray(payload.data)) return payload.data;
-
-  const arrayFields = Object.entries(payload).filter(([, value]) => Array.isArray(value));
+  const p = payload as Record<string, unknown>;
+  if (Array.isArray(p.orders)) return p.orders;
+  if (Array.isArray(p.data)) return p.data;
+  const arrayFields = Object.entries(p).filter(([, value]) => Array.isArray(value));
   if (arrayFields.length === 1) return arrayFields[0][1];
-
   return payload;
 };
 
-const normalizeOrder = (rawOrder: any): Order => {
-  const source = unwrapData(rawOrder);
-  const details = source?.details ?? {};
-  const user = source?.user ?? details?.user;
-  const orderItems = Array.isArray(details?.orderitems)
-    ? details.orderitems
-    : Array.isArray(source?.orderitems)
-    ? source.orderitems
-    : Array.isArray(source?.items)
-    ? source.items
-    : [];
+// Extract pagination total and per-status counts from the raw API response,
+// handling various response shapes (total, pagination.total, counts.all, etc.).
+const extractResponseMeta = (response: unknown): { total: number; statusCounts: Record<string, number> } => {
+  if (!response || typeof response !== "object") return { total: 0, statusCounts: {} };
+  const raw = response as Record<string, unknown>;
+  // Unwrap one level of `data` wrapper if present
+  const payload =
+    typeof raw.data === "object" && raw.data !== null && !Array.isArray(raw.data)
+      ? (raw.data as Record<string, unknown>)
+      : raw;
+  const pagination = payload.pagination as Record<string, unknown> | undefined;
+  const meta = payload.meta as Record<string, unknown> | undefined;
+  const counts = (payload.counts ?? raw.counts) as Record<string, unknown> | undefined;
 
-  const items = orderItems.map((item: any) => {
-    const nested = item?.item ?? item;
+  const total =
+    Number(
+      pagination?.total ?? pagination?.count ??
+      meta?.total ?? meta?.count ??
+      payload.total ?? payload.count ??
+      counts?.all ?? counts?.total ?? 0
+    ) || 0;
+
+  const statusCounts: Record<string, number> = {};
+  if (counts && typeof counts === "object") {
+    for (const [key, value] of Object.entries(counts)) {
+      if (key !== "all" && key !== "total") {
+        statusCounts[String(key).toLowerCase()] = Number(value) || 0;
+      }
+    }
+  }
+  return { total, statusCounts };
+};
+
+const normalizeOrder = (rawOrder: unknown): Order => {
+  const source = unwrapData(rawOrder) as Record<string, unknown> | null | undefined;
+  const details = ((source?.details as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+  const user = (source?.user ?? details.user) as Record<string, unknown> | undefined;
+  const orderItems = (
+    Array.isArray(details.orderitems) ? details.orderitems :
+    Array.isArray(source?.orderitems) ? source?.orderitems :
+    Array.isArray(source?.items) ? source?.items :
+    []
+  ) as Record<string, unknown>[];
+
+  const items = orderItems.map((item: Record<string, unknown>) => {
+    const nested = (item?.item ?? item) as Record<string, unknown>;
     return {
       id: String(item?.id ?? nested?.id ?? ""),
       name: String(nested?.name ?? item?.name ?? "Unknown item"),
       quantity: Number(item?.quantity ?? 1),
-      price: typeof item?.amount === "number" ? item.amount : Number(item?.amount ?? nested?.price ?? 0),
+      price: typeof item?.amount === "number" ? (item.amount as number) : Number(item?.amount ?? nested?.price ?? 0),
       customerPreference: String(item?.meal_preference ?? ""),
-      optionLabel: String(item?.quantity_option_label ?? nested?.quantityOptions?.[0]?.label ?? ""),
-      imageUrl: Array.isArray(nested?.image_urls) ? nested.image_urls[0] : nested?.background_image_url || null,
+      optionLabel: String(item?.quantity_option_label ?? (nested?.quantityOptions as Record<string, unknown>[] | undefined)?.[0]?.label ?? ""),
+      imageUrl: Array.isArray(nested?.image_urls) ? (nested.image_urls as (string | null)[])[0] : (nested?.background_image_url ?? null),
     };
   });
 
@@ -66,37 +98,41 @@ const normalizeOrder = (rawOrder: any): Order => {
     : undefined;
 
   return {
-    ...source,
-    id: String(source?.id ?? source?.details?.id ?? ""),
-    orderNumber: source?.orderNumber ?? source?.id ?? source?.details?.id ?? "",
-    status: String(source?.status ?? details?.status ?? "processing").toLowerCase() as any,
+    ...(source ?? {}),
+    id: String(source?.id ?? details.id ?? ""),
+    orderNumber: String(source?.orderNumber ?? source?.id ?? details.id ?? ""),
+    status: String(source?.status ?? details.status ?? "processing").toLowerCase() as Order["status"],
     items,
     customer,
-    prepTime: Number(details?.preparation_time_minutes ?? source?.preparation_time_minutes ?? details?.prepTime ?? source?.prepTime ?? 0),
-    riderArrivalTime: Number(details?.rider_arrival_time ?? source?.rider_arrival_time ?? source?.riderArrivalTime ?? 0),
-    totalPrice: Number(details?.amount ?? source?.totalPrice ?? source?.amount ?? 0),
-    createdAt: source?.createdAt ? new Date(source.createdAt) : source?.createdAt,
-    orderDate: source?.orderDate ?? source?.createdAt ?? details?.createdAt,
-    timeline: Array.isArray(details?.timeline) ? details.timeline : Array.isArray(source?.timeline) ? source.timeline : [],
-    firstName: user?.firstname ?? user?.first_name ?? user?.name ?? "Unknown",
-    lastName: user?.lastname ?? user?.last_name ?? "",
+    prepTime: Number(details.preparation_time_minutes ?? source?.preparation_time_minutes ?? details.prepTime ?? source?.prepTime ?? 0),
+    riderArrivalTime: Number(details.rider_arrival_time ?? source?.rider_arrival_time ?? source?.riderArrivalTime ?? 0),
+    totalPrice: Number(details.amount ?? source?.totalPrice ?? source?.amount ?? 0),
+    createdAt: source?.createdAt ? new Date(source.createdAt as string | number | Date) : source?.createdAt,
+    orderDate: source?.orderDate ?? source?.createdAt ?? details.createdAt,
+    timeline: Array.isArray(details.timeline) ? details.timeline : Array.isArray(source?.timeline) ? source.timeline : [],
+    firstName: String(user?.firstname ?? user?.first_name ?? user?.name ?? "Unknown"),
+    lastName: String(user?.lastname ?? user?.last_name ?? ""),
   };
 };
 
 interface UseOrdersResult {
   orders: Order[];
+  total: number;
+  statusCounts: Record<string, number>;
   loading: boolean;
   error: string | null;
   refetch: () => void;
 }
 
-const getOrdersFromResponse = (response: any): Order[] => {
+const getOrdersFromResponse = (response: unknown): Order[] => {
   const payload = extractArrayPayload(unwrapData(response));
-  return Array.isArray(payload) ? payload.map(normalizeOrder) : [];
+  return Array.isArray(payload) ? (payload as unknown[]).map(normalizeOrder) : [];
 };
 
 export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,9 +143,13 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
         setLoading(true);
         setError(null);
         const response = await ordersApi.getOrders(filters);
+        const meta = extractResponseMeta(response);
+        const normalizedOrders = getOrdersFromResponse(response);
 
         if (isMounted) {
-          setOrders(getOrdersFromResponse(response));
+          setOrders(normalizedOrders);
+          setTotal(meta.total > 0 ? meta.total : normalizedOrders.length);
+          setStatusCounts(meta.statusCounts);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch orders";
@@ -135,7 +175,11 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
       setLoading(true);
       setError(null);
       const response = await ordersApi.getOrders(filters);
-      setOrders(getOrdersFromResponse(response));
+      const meta = extractResponseMeta(response);
+      const normalizedOrders = getOrdersFromResponse(response);
+      setOrders(normalizedOrders);
+      setTotal(meta.total > 0 ? meta.total : normalizedOrders.length);
+      setStatusCounts(meta.statusCounts);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch orders";
       setError(message);
@@ -145,7 +189,7 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
     }
   };
 
-  return { orders, loading, error, refetch };
+  return { orders, total, statusCounts, loading, error, refetch };
 };
 
 interface UseOrderStatsResult {
@@ -293,6 +337,51 @@ export const useActiveOrders = (branchId?: string | string[]): UseActiveOrdersRe
   };
 
   return { orders, loading, error, refetch };
+};
+
+// Fires one lightweight request per status in parallel on mount so the
+// orders-page filter pills show accurate totals immediately after a refresh.
+const STATUS_COUNT_ENTRIES = [
+  { label: "Processing", status: "processing" },
+  { label: "Pending",    status: "pending"    },
+  { label: "Preparing",  status: "preparing"  },
+  { label: "Ready",      status: "ready"      },
+  { label: "Picked Up",  status: "on-transit" },
+  { label: "Delivered",  status: "completed"  },
+] as const;
+
+export const useOrderStatusCounts = (): {
+  counts: Record<string, number>;
+  loading: boolean;
+} => {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          STATUS_COUNT_ENTRIES.map(({ status }) =>
+            ordersApi.getOrders({ limit: 1, page: 1, status, sort: "createdAt", order: "DESC" })
+          )
+        );
+        if (!isMounted) return;
+        const newCounts: Record<string, number> = {};
+        STATUS_COUNT_ENTRIES.forEach(({ label }, i) => {
+          newCounts[label] = extractResponseMeta(results[i]).total;
+        });
+        setCounts(newCounts);
+      } catch {
+        // Silently fail; the page falls back to approximate page-based counts.
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  return { counts, loading };
 };
 
 interface UseOrderByIdResult {

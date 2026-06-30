@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { StatusFilter, OrderListItem } from "@/components/orders/orders-filters";
-import { useOrders } from "@/hooks/use-orders";
+import { useOrders, useOrderStatusCounts } from "@/hooks/use-orders";
 import { useAuthStore } from "@/stores/auth-store";
 import { Order } from "@/services/api/orders";
 import { AlertCircle, Loader } from "lucide-react";
@@ -10,20 +10,72 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+// Map display labels to API status values
+const STATUS_API_MAP: Record<string, string | undefined> = {
+  All: undefined,
+  Processing: "processing",
+  Pending: "pending",
+  Preparing: "preparing",
+  Ready: "ready",
+  "Picked Up": "on-transit",
+  Delivered: "completed",
+};
+
 export default function OrdersPage() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const business = useAuthStore((state) => state.business);
 
-  // Memoize the filters object to prevent infinite API calls
-  const orderFilters = useMemo(() => ({
-    limit: 50,
-    sort: "createdAt",
-    order: "DESC" as const
-  }), []);
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
-  const { orders: apiOrders, loading, error } = useOrders(orderFilters);
+  // Reset to page 1 whenever the status filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedStatus]);
+
+  // Lightweight call (limit: 1) just to get total count and per-status counts from
+  // the API response metadata — does not drive the visible list.
+  const countsFilters = useMemo(
+    () => ({ limit: 1, page: 1, sort: "createdAt", order: "DESC" as const }),
+    []
+  );
+  const { total: totalOrders } = useOrders(countsFilters);
+
+  const orderFilters = useMemo(
+    () => ({
+      limit: pageSize,
+      page: page,
+      sort: "createdAt",
+      order: "DESC" as const,
+      ...(STATUS_API_MAP[selectedStatus] && { status: STATUS_API_MAP[selectedStatus] }),
+    }),
+    [page, selectedStatus]
+  );
+
+  const { orders: apiOrders, total: filteredTotal, loading, error } = useOrders(orderFilters);
+
+  // Accurate per-status totals fetched on mount (6 parallel lightweight requests).
+  const { counts: mountCounts } = useOrderStatusCounts();
+
+  // Counts updated when the user visits a specific filter — always the freshest value.
+  const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (selectedStatus === "All" || loading || filteredTotal === 0) return;
+    setVisitedCounts((prev) => ({ ...prev, [selectedStatus]: filteredTotal }));
+  }, [selectedStatus, loading, filteredTotal]);
+
+  const getPillCount = (label: string): number => {
+    if (label === "All") return totalOrders;
+    // Active filter — accurate server total from the filtered query.
+    if (label === selectedStatus) return filteredTotal;
+    // Already visited this filter this session — use that result.
+    if (visitedCounts[label] !== undefined) return visitedCounts[label];
+    // On-mount fetch resolved — use those accurate totals.
+    if (mountCounts[label] !== undefined) return mountCounts[label];
+    return 0;
+  };
 
   // Check if error is an authorization error
   const isAuthorizationError = (error: string | null) => {
@@ -49,28 +101,16 @@ export default function OrdersPage() {
   // Only use API orders - no fallback to mock
   const allOrders = apiOrders;
 
-  // Filter orders by status and search
+  // Status is filtered server-side; only apply search query client-side
   const filteredOrders = useMemo(() => {
-    let filtered = selectedStatus === "All" 
-      ? allOrders 
-      : allOrders.filter((order: Order) => {
-          const orderStatus = (order.status || "").toLowerCase();
-          const selectedLower = selectedStatus.toLowerCase();
-          return orderStatus.includes(selectedLower);
-        });
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((order: Order) => 
-        String(order.id || "").toLowerCase().includes(query) ||
-        String(order.orderNumber || "").toLowerCase().includes(query) ||
-        String(order.customer?.name || "").toLowerCase().includes(query)
-      );
-    }
-
-    return filtered;
-  }, [selectedStatus, searchQuery, allOrders]);
+    if (!searchQuery.trim()) return allOrders;
+    const query = searchQuery.toLowerCase();
+    return allOrders.filter((order: Order) =>
+      String(order.id || "").toLowerCase().includes(query) ||
+      String(order.orderNumber || "").toLowerCase().includes(query) ||
+      String(order.customer?.name || "").toLowerCase().includes(query)
+    );
+  }, [searchQuery, allOrders]);
 
   return (
     <div className="space-y-6 bg-linear-to-r from-[#B2D5FF]/10 to-blue-[#B2D5FF]/10 px-0">
@@ -120,43 +160,43 @@ export default function OrdersPage() {
         <div className="grid grid-cols-4 md:grid-cols-3 gap-3 overflow-x-auto pb-2">
           <StatusFilter
             label="All"
-            count={allOrders.length}
+            count={getPillCount("All")}
             isActive={selectedStatus === "All"}
             onClick={() => setSelectedStatus("All")}
           />
           <StatusFilter
             label="Processing"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("processing")).length}
+            count={getPillCount("Processing")}
             isActive={selectedStatus === "Processing"}
             onClick={() => setSelectedStatus("Processing")}
           />
           <StatusFilter
             label="Pending"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("pending")).length}
+            count={getPillCount("Pending")}
             isActive={selectedStatus === "Pending"}
             onClick={() => setSelectedStatus("Pending")}
           />
           <StatusFilter
             label="Preparing"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("preparing")).length}
+            count={getPillCount("Preparing")}
             isActive={selectedStatus === "Preparing"}
             onClick={() => setSelectedStatus("Preparing")}
           />
           <StatusFilter
             label="Ready"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("ready")).length}
+            count={getPillCount("Ready")}
             isActive={selectedStatus === "Ready"}
             onClick={() => setSelectedStatus("Ready")}
           />
           <StatusFilter
             label="Picked Up"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("picked")).length}
+            count={getPillCount("Picked Up")}
             isActive={selectedStatus === "Picked Up"}
             onClick={() => setSelectedStatus("Picked Up")}
           />
           <StatusFilter
             label="Delivered"
-            count={allOrders.filter((o: Order) => o.status?.toLowerCase().includes("delivered")).length}
+            count={getPillCount("Delivered")}
             isActive={selectedStatus === "Delivered"}
             onClick={() => setSelectedStatus("Delivered")}
           />
@@ -164,11 +204,12 @@ export default function OrdersPage() {
       </div>
 
       {/* Sort and Results */}
-      <div className="flex items-center justify-between gap-2 p-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-0">
         <h2 className="font-bold text-[12px] leading-6.5 text-[#031927]">
-          {selectedStatus === "All" ? "All Orders" : selectedStatus} ({filteredOrders.length})
+          {selectedStatus === "All" ? "All Orders" : selectedStatus} ({selectedStatus === "All" ? totalOrders : filteredTotal})
         </h2>
       </div>
+
 
       {/* Orders List */}
       <div className="space-y-3">
@@ -212,6 +253,28 @@ export default function OrdersPage() {
             ))}
           </div>
         )}
+      </div>
+      {/* Pagination */}
+      <div className="flex flex-row items-center justify-end gap-2 p-0 md:mb-40 mb-10">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="text-sm text-slate-600">Page {page}</span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={apiOrders.length < pageSize}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
