@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/shared/loading-spinner";
 import { ServiceOfferingApi } from "@/services/api/business-service-menu-offerings";
@@ -50,6 +50,8 @@ export default function MenuManagementPage() {
   const [selectedItem, setSelectedItem] = useState<FlattenedItem | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showSortMenu, setShowSortMenu] = useState<boolean>(false);
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
   
   const {
     data: menuData,
@@ -58,6 +60,11 @@ export default function MenuManagementPage() {
   } = ServiceOfferingApi.useBusinessMenus();
   
   const updateItem = ServiceOfferingApi.useUpdateServiceItem();
+
+  // Reset to page 1 when filters, search, or sort order change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, searchQuery, sortOrder]);
 
   // Close sort menu when clicking outside
   React.useEffect(() => {
@@ -178,6 +185,11 @@ export default function MenuManagementPage() {
     
     return items;
   }, [allItems, selectedCategory, searchQuery, sortOrder]);
+
+  const paginatedItems = useMemo(
+    () => filteredItems.slice((page - 1) * pageSize, page * pageSize),
+    [filteredItems, page]
+  );
 
   const handleToggleAvailability = (itemId: string, item: FlattenedItem) => {
     // Get current visual state from local state or original data
@@ -396,7 +408,7 @@ export default function MenuManagementPage() {
                 </div>
               </div>
             ) : (
-              filteredItems.map((item) => (
+              paginatedItems.map((item) => (
                 <div
                   key={item.id}
                   className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow"
@@ -486,6 +498,31 @@ export default function MenuManagementPage() {
               ))
             )}
           </div>
+
+          {/* Pagination */}
+          {filteredItems.length > pageSize && (
+            <div className="flex flex-row items-center justify-end gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                <span className="text-sm text-slate-600">Page {page} of {Math.ceil(filteredItems.length / pageSize)}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= Math.ceil(filteredItems.length / pageSize)}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Unavailable Warning */}
           {filteredItems.some(item => !item.is_active) && (
