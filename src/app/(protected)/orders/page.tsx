@@ -19,6 +19,7 @@ const STATUS_API_MAP: Record<string, string | undefined> = {
   Ready: "ready",
   "Picked Up": "on-transit",
   Delivered: "completed",
+  Cancelled: "cancelled",
 };
 
 export default function OrdersPage() {
@@ -199,6 +200,12 @@ export default function OrdersPage() {
             count={getPillCount("Delivered")}
             isActive={selectedStatus === "Delivered"}
             onClick={() => setSelectedStatus("Delivered")}
+          />
+          <StatusFilter
+            label="Cancelled"
+            count={getPillCount("Cancelled")}
+            isActive={selectedStatus === "Cancelled"}
+            onClick={() => setSelectedStatus("Cancelled")}
           />
         </div>
       </div>

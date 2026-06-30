@@ -348,6 +348,7 @@ const STATUS_COUNT_ENTRIES = [
   { label: "Ready",      status: "ready"      },
   { label: "Picked Up",  status: "on-transit" },
   { label: "Delivered",  status: "completed"  },
+  { label: "Cancelled",  status: "cancelled"  },
 ] as const;
 
 export const useOrderStatusCounts = (): {
