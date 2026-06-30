@@ -387,7 +387,7 @@ export default function MenuManagementPage() {
           </div>
 
           {/* Items List */}
-          <div className="space-y-3">
+          <div className="space-y-3 grid grid-cols-2 md:grid-cols-1 gap-4">
             {filteredItems.length === 0 ? (
               <div className="flex items-center justify-center py-12 border border-gray-200 rounded-lg bg-white">
                 <div className="text-center">

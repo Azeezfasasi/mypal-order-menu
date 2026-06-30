@@ -42,8 +42,8 @@ export function OrdersInProgress({ orders }: OrdersInProgressProps) {
         </Link>
       </div>
 
-      <div className="space-y-3">
-        {orders.slice(0, 2).map((order) => {
+      <div className="space-y-3 grid grid-cols-2 md:grid-cols-1 gap-3 items-center justify-center">
+        {orders.slice(0, 5).map((order) => {
           const firstItem = order?.items?.[0];
           const normalizeDate = (value: unknown) => {
             if (value instanceof Date) return value.toISOString();
@@ -57,8 +57,6 @@ export function OrdersInProgress({ orders }: OrdersInProgressProps) {
           const customerName = order?.customer?.name || "Unknown customer";
           const customerAddress = order?.customer?.address || "Address unavailable";
           const statusText = String(order?.status ?? "Pending");
-          const prepTimeText = typeof order?.prepTime === "number" ? `${order.prepTime} mins left` : "Pending";
-          const riderArrivalText = typeof order?.riderArrivalTime === "number" ? `${order.riderArrivalTime} mins away` : "Pending";
 
           return (
             <Link key={order?.id || Math.random().toString()} href={`/orders/${order?.id || ""}`} className="block">
