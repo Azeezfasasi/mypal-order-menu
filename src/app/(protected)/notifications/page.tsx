@@ -98,7 +98,7 @@ export default function NotificationsPage() {
         {/* Left / Main column - spans 2 columns on desktop, stacks on small screens */}
         <div className="col-span-2 lg:col-span-1 space-y-6 min-w-0">
           {/* Stats Cards */}
-          <NotificationStats />
+          <NotificationStats totalCount={pagination.total} notifications={notifications} />
 
           {/* Device Token Manager */}
           <DeviceTokenManager />

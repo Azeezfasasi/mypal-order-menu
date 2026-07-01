@@ -2,15 +2,32 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnreadNotificationCount } from "@/examples/notification-api-usage";
+import type { Notification } from "@/types/notification-types";
 import { AlertCircle, Bell, CheckCircle, Clock } from "lucide-react";
 
-export function NotificationStats() {
+interface NotificationStatsProps {
+  totalCount?: number;
+  notifications?: Notification[];
+}
+
+export function NotificationStats({ totalCount = 0, notifications = [] }: NotificationStatsProps) {
   const unreadCount = useUnreadNotificationCount();
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const readToday = notifications.filter(
+    (n) => n.isRead && new Date(n.updatedAt) >= todayStart,
+  ).length;
+
+  const pendingActions = notifications.filter(
+    (n) => !n.isRead && Boolean(n.actionUrl),
+  ).length;
 
   const stats = [
     {
       title: "Total Notifications",
-      value: "0", // This would come from API
+      value: totalCount.toString(),
       icon: Bell,
       description: "All time notifications",
       color: "text-blue-600",
@@ -24,14 +41,14 @@ export function NotificationStats() {
     },
     {
       title: "Read Today",
-      value: "0", // This would come from API
+      value: readToday.toString(),
       icon: CheckCircle,
       description: "Marked as read",
       color: "text-green-600",
     },
     {
       title: "Pending Actions",
-      value: "0", // This would come from API
+      value: pendingActions.toString(),
       icon: Clock,
       description: "Awaiting response",
       color: "text-orange-600",

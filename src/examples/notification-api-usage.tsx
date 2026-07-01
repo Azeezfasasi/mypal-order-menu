@@ -31,7 +31,7 @@ export const useUserNotifications = (page = 1, limit = 10) => {
   });
 
   return {
-    notifications: data?.notifications || [],
+    notifications: data?.data || [],
     pagination: {
       total: data?.total || 0,
       page: data?.page || 1,

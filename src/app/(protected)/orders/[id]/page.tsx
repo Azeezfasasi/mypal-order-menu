@@ -6,7 +6,7 @@ import { TimelineEvent, OrderItem } from "@/services/api/orders";
 import { OrderStatus } from "@/types/enums";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Camera, AlertCircle, Loader, MoreHorizontal, Upload, FileText, SendHorizontal, CircleX } from "lucide-react";
+import { ChevronLeft, Camera, AlertCircle, Loader, MoreHorizontal, Upload, FileText, SendHorizontal, CircleX, MapPin } from "lucide-react";
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -317,7 +317,7 @@ export default function OrderDetailsPage() {
         </div>
 
         {/* order prep and rider time */}
-        <div className="grid gap-4 grid-cols-2">
+        {["pending", "processing", "preparing"].includes(currentStatus) && <div className="grid gap-4 grid-cols-2">
           <div className="rounded-[24px] bg-[#F8FAFC] p-4 md:p-1">
             <p className="text-[12px] leading-[26px] font-medium uppercase tracking-[0.24em] text-[#68798A]">Prep time</p>
             <p className="text-[14px] leading-[26px] font-semibold text-[#DB3A07]">{order.prepTime || 0} mins left</p>
@@ -332,7 +332,7 @@ export default function OrderDetailsPage() {
               <div className="h-full rounded-full bg-[#114CCC]" style={{ width: `${riderProgress}%` }} />
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Order details */}
         <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
@@ -365,36 +365,44 @@ export default function OrderDetailsPage() {
               {/* horizontal line with gray color */}
               <div className="border-t border-slate-200 hidden md:block" />
               
-              {/* Customer data - add customer name, phone and photo */}
-              {/* <div className="rounded-[24px] bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Customer</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{order.customer?.name || "Customer name not available"}</p>
-                <p className="mt-1 text-sm text-slate-500">{order.customer?.phone || "Not Available"}</p>
-                <p className="mt-1 text-sm text-slate-500">{order.customer?.address || "Customer address not available"}</p>
-                <p className="mt-2 text-sm text-slate-500">{itemCount} item{itemCount === 1 ? "" : "s"}</p>
-              </div> */}
-
               {/* Customer details */}
               <div className="hidden md:block rounded-[32px] md:border-none border border-slate-200 bg-white p-6 md:p-0 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Customer</p>
-                    <p className="mt-2 text-xl font-semibold text-slate-950">{order.customer?.name || "Customer name not available"}</p>
+                    <p className="mt-2 text-xl font-semibold text-slate-950">{String((order.address as Record<string, unknown>)?.full_name ?? order.customer?.name ?? "Customer name not available")}</p>
                   </div>
                 </div>
                 <div className="mt-4 space-y-4 text-sm text-slate-700">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Phone</p>
-                    <p className="mt-1 text-base text-slate-900">{String(order.customer?.phone ?? "N/A")}</p>
+                    <p className="mt-1 text-base text-slate-900">{String((order.address as Record<string, unknown>)?.phone_number ?? order.customer?.phone ?? "N/A")}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Delivery address</p>
-                    <p className="mt-1 text-base text-slate-900">{String(order.customer?.address || "N/A")}</p>
-                    <p className="mt-1 text-sm text-slate-500">{String(order.customer?.city || "")}{order.customer?.city && order.customer?.state ? ", " : ""}{String(order.customer?.state || "")}</p>
+                    <p className="mt-1 text-base text-slate-900">{String((order.address as Record<string, unknown>)?.address ?? order.customer?.address ?? "N/A")}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {String((order.address as Record<string, unknown>)?.city ?? order.customer?.city ?? "")}
+                      {((order.address as Record<string, unknown>)?.city ?? order.customer?.city) && ((order.address as Record<string, unknown>)?.state ?? order.customer?.state) ? ", " : ""}
+                      {String((order.address as Record<string, unknown>)?.state ?? order.customer?.state ?? "")}
+                    </p>
+                    {(order.address as Record<string, unknown>)?.notes ? (
+                      <p className="mt-1 text-sm text-slate-500">Notes: {String((order.address as Record<string, unknown>).notes)}</p>
+                    ) : null}
+                    {(order.address as Record<string, unknown>)?.lat && (order.address as Record<string, unknown>)?.long ? (
+                      <a
+                        href={`https://www.google.com/maps?q=${(order.address as Record<string, unknown>).lat},${(order.address as Record<string, unknown>).long}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Open in Google Maps
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               </div>
-
             </div>
 
             <div className="flex flex-row justify-start items-center bg-[#FEF8E1] px-[13px] py-[7px] rounded-[10px] border border-[#FDE68A] text-[14px] my-4">
@@ -403,11 +411,13 @@ export default function OrderDetailsPage() {
               </div>
               <div className="flex flex-col ml-3">
                 <p className="text-[14.72px] leading-[30.95px] font-semibold text-[#8E4E09]">Customer preference</p>
-                <p className="text-[14.72px] leading-[30.95px] font-medium text-[#1A1D21]">{String(primaryItem?.customerPreference || "No preference provided")}</p>
+                {(order.address as Record<string, unknown>)?.notes ? (
+                  <p className="mt-1 text-sm text-slate-500">{String((order.address as Record<string, unknown>).notes)}</p>
+                ) : null}
               </div>
             </div>
 
-            {/* Order Timeline section */}
+            {/* Mobile Order Timeline section */}
             <div className="mt-5 space-y-4 hidden md:block px-4 border border-collapse border-slate-200 rounded-[10px] py-4">
               {timelineSteps.map((step, index) => {
                 const isCompleted = index < currentStepIndex || (currentStepIndex === -1 && step.id === "pending");
@@ -446,23 +456,44 @@ export default function OrderDetailsPage() {
                       {stepTime ? (
                         <p className="mt-1 text-xs text-slate-500">{stepTime}</p>
                       ) : null}
-                      {isActive ? (
-                        <p className="mt-1 text-xs text-orange-600">In progress</p>
+                      {isActive && step.id === "processing" ? (
+                        <p className="mt-1 text-xs text-orange-600">Processing</p>
+                      ) : null}
+                      {isActive && step.id === "ready" ? (
+                        <p className="mt-1 text-xs text-orange-600">Ready</p>
+                      ) : null}
+                      {isActive && step.id === "on-transit" ? (
+                        <p className="mt-1 text-xs text-orange-600">In Transit</p>
+                      ) : null}
+                      {isActive && step.id === "completed" ? (
+                        <p className="mt-1 text-xs text-orange-600">Completed</p>
                       ) : null}
                     </div>
 
-                    {/* Message and icon on the right side showing we are preparing your order */}
+                    {/* Mobile - Message and icon on the right side showing we are preparing your order */}
                     <div className="ml-auto flex items-center gap-2">
                       {isActive && step.id === "ready" ? (
                         <div className="flex items-center gap-2">
                           <Loader className="w-4 h-4 animate-spin text-orange-600" />
-                          <p className="text-xs text-orange-600">We’re preparing your delicious meal</p>
+                          <p className="text-xs text-orange-600">Your order is ready and waiting for pickup</p>
                         </div>
                       ) : null}
                       {isActive && step.id === "processing" ? (
                         <div className="flex items-center gap-2">
                           <Loader className="w-4 h-4 animate-spin text-orange-600" />
-                          <p className="text-xs text-orange-600">We’re preparing your delicious meal</p>
+                          <p className="text-xs text-orange-600">We&apos;re preparing your delicious meal</p>
+                        </div>
+                      ) : null}
+                      {isActive && step.id === "on-transit" ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                          <p className="text-xs text-orange-600">Your order is on the way</p>
+                        </div>
+                      ) : null}
+                      {isActive && step.id === "completed" ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                          <p className="text-xs text-orange-600">Your order has been delivered</p>
                         </div>
                       ) : null}
                     </div>
@@ -497,19 +528,37 @@ export default function OrderDetailsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Customer</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-950">{order.customer?.name || "Unknown"}</p>
+                  <p className="mt-2 text-xl font-semibold text-slate-950">{String((order.address as Record<string, unknown>)?.full_name ?? order.customer?.name ?? "Unknown")}</p>
                 </div>
                 <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Customer</div>
               </div>
               <div className="mt-6 space-y-4 text-sm text-slate-700">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Phone</p>
-                  <p className="mt-1 text-base text-slate-900">{String(order.customer?.phone ?? "N/A")}</p>
+                  <p className="mt-1 text-base text-slate-900">{String((order.address as Record<string, unknown>)?.phone_number ?? order.customer?.phone ?? "N/A")}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Delivery address</p>
-                  <p className="mt-1 text-base text-slate-900">{String(order.customer?.address || "N/A")}</p>
-                  <p className="mt-1 text-sm text-slate-500">{String(order.customer?.city || "")}{order.customer?.city && order.customer?.state ? ", " : ""}{String(order.customer?.state || "")}</p>
+                  <p className="mt-1 text-base text-slate-900">{String((order.address as Record<string, unknown>)?.address ?? order.customer?.address ?? "N/A")}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {String((order.address as Record<string, unknown>)?.city ?? order.customer?.city ?? "")}
+                    {((order.address as Record<string, unknown>)?.city ?? order.customer?.city) && ((order.address as Record<string, unknown>)?.state ?? order.customer?.state) ? ", " : ""}
+                    {String((order.address as Record<string, unknown>)?.state ?? order.customer?.state ?? "")}
+                  </p>
+                  {(order.address as Record<string, unknown>)?.notes ? (
+                    <p className="mt-1 text-sm text-slate-500">Notes: {String((order.address as Record<string, unknown>).notes)}</p>
+                  ) : null}
+                  {(order.address as Record<string, unknown>)?.lat && (order.address as Record<string, unknown>)?.long ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${(order.address as Record<string, unknown>).lat},${(order.address as Record<string, unknown>).long}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Open in Google Maps
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -522,7 +571,7 @@ export default function OrderDetailsPage() {
                 </div>
               </div>
 
-              {/* Order Timeline section */}
+              {/* Laptop Order Timeline section */}
               <div className="mt-5 space-y-4">
                 {timelineSteps.map((step, index) => {
                   const isCompleted = index < currentStepIndex || (currentStepIndex === -1 && step.id === "pending");
@@ -530,39 +579,76 @@ export default function OrderDetailsPage() {
                   const stepTime = getStepTime(step.id);
 
                   return (
-                    <div key={step.id} className="flex items-start gap-4">
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
-                            isCompleted
-                              ? "border-blue-500 bg-blue-500 text-white"
-                              : isActive
-                              ? "border-orange-500 bg-orange-500 text-white"
-                              : "border-slate-300 bg-white text-slate-500",
-                          )}
-                        >
-                          {isCompleted || isActive ? "✓" : index + 1}
+                      <div key={step.id} className="flex items-start gap-4">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={cn(
+                              "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
+                              isCompleted
+                                ? "border-blue-500 bg-blue-500 text-white"
+                                : isActive
+                                ? "border-orange-500 bg-orange-500 text-white"
+                                : "border-slate-300 bg-white text-slate-500",
+                            )}
+                          >
+                            {isCompleted || isActive ? "✓" : index + 1}
+                          </div>
+                          {index < timelineSteps.length - 1 ? (
+                            <div className={cn(
+                              "mt-1 h-full w-px",
+                              isCompleted ? "bg-blue-500" : "bg-slate-200",
+                            )} />
+                          ) : null}
                         </div>
-                        {index < timelineSteps.length - 1 ? (
-                          <div className={cn(
-                            "mt-1 h-full w-px",
-                            isCompleted ? "bg-blue-500" : "bg-slate-200",
-                          )} />
+                        <div className="min-w-0">
+                          <p className={cn(
+                            "text-sm font-semibold",
+                            isCompleted || isActive ? "text-slate-900" : "text-slate-500",
+                          )}>
+                            {step.label}
+                          </p>
+                          {stepTime ? (
+                            <p className="mt-1 text-xs text-slate-500">{stepTime}</p>
+                          ) : null}
+                          {isActive && step.id === "processing" ? (
+                          <p className="mt-1 text-xs text-orange-600">Processing</p>
+                          ) : null}
+                          {isActive && step.id === "ready" ? (
+                            <p className="mt-1 text-xs text-orange-600">Ready</p>
+                          ) : null}
+                          {isActive && step.id === "on-transit" ? (
+                            <p className="mt-1 text-xs text-orange-600">In Transit</p>
+                          ) : null}
+                          {isActive && step.id === "completed" ? (
+                            <p className="mt-1 text-xs text-orange-600">Completed</p>
+                          ) : null}
+                        </div>
+
+                        {/* Laptop - Message and icon on the right side showing we are preparing your order */}
+                        <div className="ml-auto flex items-center gap-2">
+                        {isActive && step.id === "ready" ? (
+                          <div className="flex items-center gap-2">
+                            <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                            <p className="text-xs text-orange-600">Your order is ready and waiting for pickup</p>
+                          </div>
                         ) : null}
-                      </div>
-                      <div className="min-w-0">
-                        <p className={cn(
-                          "text-sm font-semibold",
-                          isCompleted || isActive ? "text-slate-900" : "text-slate-500",
-                        )}>
-                          {step.label}
-                        </p>
-                        {stepTime ? (
-                          <p className="mt-1 text-xs text-slate-500">{stepTime}</p>
+                        {isActive && step.id === "processing" ? (
+                          <div className="flex items-center gap-2">
+                            <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                            <p className="text-xs text-orange-600">We&apos;re preparing your delicious meal</p>
+                          </div>
                         ) : null}
-                        {isActive ? (
-                          <p className="mt-1 text-xs text-orange-600">In progress</p>
+                        {isActive && step.id === "on-transit" ? (
+                          <div className="flex items-center gap-2">
+                            <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                            <p className="text-xs text-orange-600">Your order is on the way</p>
+                          </div>
+                        ) : null}
+                        {isActive && step.id === "completed" ? (
+                          <div className="flex items-center gap-2">
+                            <Loader className="w-4 h-4 animate-spin text-orange-600" />
+                            <p className="text-xs text-orange-600">Your order has been delivered</p>
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -709,6 +795,101 @@ export default function OrderDetailsPage() {
         </div>
       </div>
 
+      {/* Payment & Delivery Info */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-1">
+        {/* Payment */}
+        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Payment</p>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Reference</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{String((order.payment as Record<string, unknown>)?.reference_id ?? "N/A")}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Amount</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">₦{Number((order.payment as Record<string, unknown>)?.amount ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Status</p>
+              {(() => {
+                const paymentStatus = String((order.payment as Record<string, unknown>)?.status ?? "N/A");
+                const isSuccess = paymentStatus.toLowerCase() === "success";
+                return (
+                  <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${isSuccess ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {paymentStatus}
+                  </span>
+                );
+              })()}
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Type</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{String((order.payment as Record<string, unknown>)?.type ?? "N/A")}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200 col-span-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Paid At</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {(() => {
+                  const d = parseApiDate((order.payment as Record<string, unknown>)?.createdAt);
+                  return d ? d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A";
+                })()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery */}
+        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Delivery</p>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Reference</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{String((order.delivery as Record<string, unknown>)?.delivery_reference ?? "N/A")}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Delivery Fee</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">₦{Number((order.delivery as Record<string, unknown>)?.delivery_price ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Status</p>
+              {(() => {
+                const deliveryStatus = String((order.delivery as Record<string, unknown>)?.delivery_status ?? "N/A");
+                const isSuccess = ["success", "delivered", "completed"].includes(deliveryStatus.toLowerCase());
+                const isPending = ["pending", "assigned", "in_transit"].includes(deliveryStatus.toLowerCase());
+                return (
+                  <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${isSuccess ? "bg-green-100 text-green-700" : isPending ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                    {deliveryStatus}
+                  </span>
+                );
+              })()}
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Pickup OTP</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{String((order.delivery as Record<string, unknown>)?.pickup_otp ?? "N/A")}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Dropoff OTP</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{String((order.delivery as Record<string, unknown>)?.dropoff_otp ?? "N/A")}</p>
+            </div>
+            <div className="rounded-[16px] bg-slate-50 p-3 border border-slate-200">
+              <p className="text-[11px] uppercase tracking-[0.24em] font-semibold text-orange-600">Tracking</p>
+              {(order.delivery as Record<string, unknown>)?.tracking_url ? (
+                <a
+                  href={String((order.delivery as Record<string, unknown>).tracking_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 text-sm font-semibold text-orange-600 hover:underline"
+                >
+                  Track order
+                </a>
+              ) : (
+                <p className="mt-1 text-sm font-semibold text-slate-900">N/A</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
       <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4">
           <div>

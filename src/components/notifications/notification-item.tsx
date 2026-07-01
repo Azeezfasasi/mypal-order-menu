@@ -10,6 +10,7 @@ import {
 import { NotificationType } from "@/types/enums";
 import type { Notification } from "@/types/notification-types";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import {
   Bell,
   Calendar,
@@ -143,14 +144,13 @@ export function NotificationItem({ notification }: NotificationItemProps) {
                     })}
                   </span>
                   {notification.actionUrl && (
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-xs whitespace-nowrap"
+                    <Link
+                      href={notification.actionUrl.replace(/^\/business/, "")}
+                      className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline whitespace-nowrap"
                     >
-                      <ExternalLink className="h-3 w-3 mr-1" />
+                      <ExternalLink className="h-3 w-3" />
                       View Details
-                    </Button>
+                    </Link>
                   )}
                 </div>
               </div>

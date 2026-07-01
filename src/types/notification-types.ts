@@ -43,13 +43,14 @@ export interface NotificationQuery extends PaginationDto {
 }
 
 export interface NotificationResponse {
-  notifications: Notification[];
+  data: Notification[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
   hasNext: boolean;
   hasPrevious: boolean;
+  notifications?: Notification[];
 }
 
 export interface UnreadCountResponse {

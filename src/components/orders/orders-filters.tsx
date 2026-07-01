@@ -135,7 +135,7 @@ export function OrderListItem({
             </div>
 
             {/* Prep time and rider time */}
-            <div className="w-full grid gap-3 grid-cols-2 flex-1 min-w-[400px] md:min-w-0 lg:min-w-[300px] border-t border-slate-200 pt-2">
+            {["pending", "processing", "preparing"].includes(status.toLowerCase()) && <div className="w-full grid gap-3 grid-cols-2 flex-1 min-w-[400px] md:min-w-0 lg:min-w-[300px] border-t border-slate-200 pt-2">
             {/* <div className="w-full flex flex-row justify-start flex-1 min-w-[300px] border-t border-slate-200 pt-2"> */}
               <div className="rounded-[24px] bg-slate-50 p-4 flex-1">
                 <p className="text-[12px] uppercase leading-[26px] font-medium text-[#68798A]">Prep time</p>
@@ -151,8 +151,8 @@ export function OrderListItem({
                   <div className="h-full w-1/2 rounded-full bg-[#0EA5E9]" />
                 </div>
               </div>
-            </div>
-
+            </div>}
+            
             {customerPreference ? (
               <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto flex items-center justify-center gap-1 flex-1 xmin-w-[100%] lg:min-w-[40vw]">
                 <span className="font-medium">Customer preference:</span> <span className="font-bold">{customerPreference}</span>
