@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { ArrowLeft, Check, Loader2, SendHorizontal, User, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom';
 import { Button } from '../ui/button';
 import { BusinessMessagingApi } from '@/services/api/business-messaging-api';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -143,7 +144,7 @@ const MessagingModal = ({ onClose }: MessagingModalProps) => {
 
     const [openSendFirstMessage, setOpenSendFirstMessage] = useState(false);
 
-    return (
+    return createPortal(
         <div onClick={onClose} className='fixed top-0 left-0 w-screen h-dvh bg-black/30 flex items-center justify-end z-[9999]'>
             <div onClick={(e) => e.stopPropagation()} className='fixed h-dvh p-1 bg-white right-0 top-0 w-full max-w-md shadow-md z-[10000]'>
                 <div className='relative bg-[#142545] text-white p-3 h-[120px] rounded-[3px] flex flex-col justify-between'>
@@ -312,7 +313,8 @@ const MessagingModal = ({ onClose }: MessagingModalProps) => {
                 }
 
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

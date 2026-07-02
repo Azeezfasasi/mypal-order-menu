@@ -88,18 +88,18 @@ export default function DashboardPage() {
           <h2 className="text-[20px] leading-6.5 font-extrabold text-[#031927] mb-4">Live Overview</h2>
 
           {/* Search Box */}
-          <div className="srelative mb-4 z-0">
-            {/* <Image
+          <div className="relative mb-4 z-0">
+            <Image
               width={20}
               height={20}
               src="/images/search.svg"
               alt="Search Icon"
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-            /> */}
+            />
             <Input
               type="search"
               placeholder="Search order id, customer name, item name..."
-              className="w-1/2 md:w-full pl-4 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
+              className="w-1/2 md:w-full pl-8 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

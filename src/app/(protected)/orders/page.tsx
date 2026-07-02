@@ -148,14 +148,20 @@ export default function OrdersPage() {
         </div>
 
         <div className="relative">
+          <Image
+            width={20}
+            height={20}
+            src="/images/search.svg"
+            alt="Search Icon"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+          />
           <Input
             type="text"
             placeholder="Search order ID, customer name, item name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-12 rounded-[40px] border border-slate-200 bg-white px-5 pl-12 shadow-sm"
+            className="h-12 rounded-[40px] border border-slate-200 bg-white px-5 pl-8 shadow-sm"
           />
-          <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
         </div>
 
         <div className="grid grid-cols-4 md:grid-cols-3 gap-3 overflow-x-auto pb-2">

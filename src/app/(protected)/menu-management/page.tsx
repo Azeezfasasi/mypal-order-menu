@@ -316,14 +316,20 @@ export default function MenuManagementPage() {
       ) : (
         <>
           {/* Search Bar */}
-          <div className="">
-            {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" /> */}
+          <div className="relative">
+            <Image
+              width={20}
+              height={20}
+              src="/images/search.svg"
+              alt="Search Icon"
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+            />
             <Input
               type="text"
               placeholder="Search order id, customer name, item name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="md:w-full w-1/2 pl-4 py-3 bg-white rounded-full border border-[#E1E3E7]"
+              className="md:w-full w-1/2 pl-8 py-3 bg-white rounded-full border border-[#E1E3E7]"
             />
           </div>
 

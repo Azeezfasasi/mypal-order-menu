@@ -266,11 +266,6 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           />}
 
       </div>
-
-        {isMessagingOpen &&
-          <MessagingModal
-            onClose={handleCloseMessagingModal}
-          />}
       </div>
     </header>
   );
