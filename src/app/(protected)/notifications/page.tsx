@@ -130,7 +130,7 @@ export default function NotificationsPage() {
                     >
                       Orders
                     </TabsTrigger>
-                    <TabsTrigger
+                    {/* <TabsTrigger
                       value="event_reminder"
                       className="whitespace-nowrap"
                     >
@@ -151,6 +151,7 @@ export default function NotificationsPage() {
                     <TabsTrigger value="general" className="whitespace-nowrap">
                       General
                     </TabsTrigger>
+                    */}
                   </TabsList>
                 </div>
 
