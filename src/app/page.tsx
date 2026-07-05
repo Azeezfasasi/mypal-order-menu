@@ -14,7 +14,7 @@ export default function RootPage() {
         // User is authenticated, redirect to dashboard
         router.replace("/dashboard");
       } else {
-        // User is not authenticated, redirect to login
+        // User is not authenticated, redirect to login.
         router.replace("/login");
       }
     }
