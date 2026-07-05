@@ -1,4 +1,4 @@
-# MyPal Business Admin Dashboard
+# MyPal Order Management Dashboard
 
 A comprehensive business administration platform designed for hospitality and service industries, supporting restaurants, fine dining establishments, salons, spas, and accommodation providers.
 
