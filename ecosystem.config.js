@@ -1,8 +1,8 @@
 module.exports = {
   apps: [
     {
-      name: "business-admin",
-      script: "./server.js",
+      name: "order-reservation-mgmt",
+      script: "server.js",
       cwd: process.cwd(),
       instances: 1,
       exec_mode: "fork",
