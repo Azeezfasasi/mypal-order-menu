@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { OrdersInProgress } from "@/components/dashboard/orders-in-progress";
 import { MealPrepAlert } from "@/components/dashboard/meal-prep-alert";
@@ -9,9 +10,11 @@ import { useAuthStore } from "@/stores/auth-store";
 import { AlertCircle, Loader } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import type { Order } from "@/services/api/orders";
 // import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const [searchQuery, setSearchQuery] = useState("");
   const business = useAuthStore((state) => state.business);
   const primaryLinkedBusinessId = business?.linkedBusinesses?.find((lb) => lb.is_primary)?.id;
   const businessExt = business as unknown as Record<string, unknown> | null;
@@ -29,6 +32,32 @@ export default function DashboardPage() {
   const isAuthorizationError = (error: string | null) => {
     return error && (error.includes("not authorized") || error.includes("403"));
   };
+
+  const normalizeSearchValue = (value: unknown) => {
+    if (value == null) return "";
+    return String(value).trim().toLowerCase();
+  };
+
+  const orderMatchesSearch = (order: Order, query: string) => {
+    const normalizedQuery = normalizeSearchValue(query);
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const searchableValues = [
+      order.id,
+      order.orderNumber,
+      order.customer?.name,
+      order.customer?.address,
+      order.status,
+      ...(order.items?.flatMap((item) => [item.name, item.customerPreference]) ?? []),
+    ];
+
+    return searchableValues.some((value) => normalizeSearchValue(value).includes(normalizedQuery));
+  };
+
+  const filteredOrders = (orders ?? []).filter((order) => orderMatchesSearch(order, searchQuery));
 
   const getAuthErrorMessage = (error: string | null) => {
     if (!error) return null;
@@ -98,7 +127,9 @@ export default function DashboardPage() {
             />
             <Input
               type="search"
-              placeholder="Search order id, customer name, item name..."
+              placeholder="Search by order id, customer name, item name..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               className="w-1/2 md:w-full pl-8 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -178,7 +209,7 @@ export default function DashboardPage() {
           description="Keep an eye on countdowns to avoid delays."
         />
 
-        <OrdersInProgress orders={orders} />
+        <OrdersInProgress orders={filteredOrders} searchQuery={searchQuery} />
         </>
       )}
 

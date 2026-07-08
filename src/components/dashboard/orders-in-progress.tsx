@@ -7,9 +7,12 @@ import { OrderListItem } from "@/components/orders/orders-filters";
 
 interface OrdersInProgressProps {
   orders: Order[];
+  searchQuery?: string;
 }
 
-export function OrdersInProgress({ orders }: OrdersInProgressProps) {
+export function OrdersInProgress({ orders, searchQuery = "" }: OrdersInProgressProps) {
+  const hasSearchQuery = searchQuery.trim().length > 0;
+
   if (!orders || orders.length === 0) {
     return (
       <div className="mt-8">
@@ -26,8 +29,14 @@ export function OrdersInProgress({ orders }: OrdersInProgressProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
           </div>
-          <p className="md:text-[14px] text-[16px] font-semibold text-[#68798A]">No orders in progress</p>
-          <p className="md:text-[12px] text-[14px] text-[#A0AEC0] mt-1">Great! You&apos;re all caught up. New orders will appear here.</p>
+          <p className="md:text-[14px] text-[16px] font-semibold text-[#68798A]">
+            {hasSearchQuery ? "No matching orders found" : "No orders in progress"}
+          </p>
+          <p className="md:text-[12px] text-[14px] text-[#A0AEC0] mt-1">
+            {hasSearchQuery
+              ? `Try a different search for "${searchQuery.trim()}".`
+              : "Great! You&apos;re all caught up. New orders will appear here."}
+          </p>
         </div>
       </div>
     );

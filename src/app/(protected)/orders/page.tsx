@@ -108,8 +108,10 @@ export default function OrdersPage() {
     const query = searchQuery.toLowerCase();
     return allOrders.filter((order: Order) =>
       String(order.id || "").toLowerCase().includes(query) ||
+      String(order.name || "").toLowerCase().includes(query) ||
       String(order.orderNumber || "").toLowerCase().includes(query) ||
-      String(order.customer?.name || "").toLowerCase().includes(query)
+      String(order.customer?.name || "").toLowerCase().includes(query) ||
+      String(order.items?.flatMap((item) => [item.name, item.customerPreference]) ?? []).toLowerCase().includes(query),
     );
   }, [searchQuery, allOrders]);
 
