@@ -111,6 +111,7 @@ export default function OrdersPage() {
       String(order.name || "").toLowerCase().includes(query) ||
       String(order.orderNumber || "").toLowerCase().includes(query) ||
       String(order.customer?.name || "").toLowerCase().includes(query) ||
+      String(order.status || "").toLowerCase().includes(query) ||
       String(order.items?.flatMap((item) => [item.name, item.customerPreference]) ?? []).toLowerCase().includes(query),
     );
   }, [searchQuery, allOrders]);
