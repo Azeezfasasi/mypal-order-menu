@@ -477,15 +477,21 @@ export function DeviceTokenManager() {
     localStorage.removeItem(REGISTERED_TOKEN_KEY);
     console.log("🔄 Cleared cached FCM token and registration status from localStorage");
 
+    // Clear the existing push subscription so Firebase creates a new one.
+    // We intentionally do NOT unregister the service worker here — that would
+    // destroy the PWA caching layer and require a full page reload to restore it.
     if (await isMessagingSupportedAsync()) {
       try {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
+        const registration = await navigator.serviceWorker.getRegistration("/");
+        if (registration) {
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            await subscription.unsubscribe();
+            console.log("🔄 Unsubscribed existing push subscription");
+          }
         }
-        console.log("Service worker registrations cleared");
       } catch (error) {
-        console.error("Failed to clear service worker registrations:", error);
+        console.warn("Failed to clear push subscription (non-fatal):", error);
       }
     }
 
@@ -849,6 +855,15 @@ export function DeviceTokenManager() {
                     <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded break-all overflow-hidden">
                       Token: {token.substring(0, 20)}...
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetryWithCacheClear}
+                      className="w-full"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2 flex-shrink-0" />
+                      Clear & Re-enroll
+                    </Button>
                   </>
                 )}
             </div>

@@ -334,40 +334,18 @@ function createOfflinePage() {
 }
 
 // --- Push / Notification handlers ---
-self.addEventListener("push", function (event) {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || "You have a new notification",
-      icon: data.icon || "/android-chrome-192x192.png",
-      badge: "/favicon-32x32.png",
-      vibrate: [100, 50, 100],
-      sound: "/sounds/notification.mp3", // Add notification sound for both mobile and desktop
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: data.id || "notification",
-        url:
-          data.url ||
-          "https://business.mypal-inc.com" ||
-          "https://mypal-business-admin.onrender.com",
-        version: CACHE_VERSION,
-        ...data,
-      },
-      actions: [
-        { action: "open", title: "Open App" },
-        { action: "dismiss", title: "Dismiss" },
-      ],
-      requireInteraction: true,
-      tag: data.tag || "default",
-    };
-    event.waitUntil(
-      self.registration.showNotification(
-        data.title || "MyPal Business",
-        options,
-      ),
-    );
-  }
-});
+// NOTE: The manual "push" event listener has been intentionally removed.
+// Firebase Messaging's onBackgroundMessage (registered below) already handles
+// ALL FCM push events.  Having BOTH a manual push listener AND onBackgroundMessage
+// caused two showNotification() calls per message — the second one silently
+// failed on Android/iOS because the first had already shown or claimed the tag slot,
+// making push notifications appear unreliable on mobile devices.
+//
+// Non-FCM push (direct Web Push): If you ever need to handle raw Web Push messages
+// that do NOT go through Firebase, restore a push listener here and guard it with
+//   if (!event.data.text().startsWith('{"fcmMessageId"')) { ... }
+//
+// Click handling lives in notificationclick below and is unaffected.
 
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
@@ -460,7 +438,9 @@ try {
       icon: payload.notification?.icon || "/android-chrome-192x192.png",
       badge: "/favicon-32x32.png",
       vibrate: [100, 50, 100],
-      sound: "/sounds/notification.mp3", // Add notification sound for both mobile and desktop
+      // requireInteraction: true is intentionally omitted — it prevents
+      // notifications from appearing on many Android devices and is not
+      // supported on iOS at all.
       data: {
         dateOfArrival: Date.now(),
         primaryKey: payload.data?.id || "notification",
@@ -471,7 +451,6 @@ try {
         { action: "open", title: "Open App" },
         { action: "dismiss", title: "Dismiss" },
       ],
-      requireInteraction: true,
       tag: payload.data?.tag || "default",
       renotify: true,
     };

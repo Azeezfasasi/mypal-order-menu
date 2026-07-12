@@ -39,22 +39,32 @@ export const getPushSupportStatus = (): PushSupportInfo => {
   }
 
   // iOS Safari specific check
+  // iOS 16.4+ supports Web Push ONLY when installed as a PWA (standalone mode)
   if (browserInfo.isIOS && browserInfo.name === "Safari") {
-    return {
-      supported: false,
-      reason: "ios-safari-not-supported",
-      browserInfo,
-      userGuidance: {
-        title: "iOS Safari Limitation",
-        message:
-          "Push notifications are not supported in iOS Safari. You can still use all other app features.",
-        steps: [
-          "Use Chrome or Firefox on iOS for notification support",
-          "Or add this website to your home screen (it will work like an app)",
-        ],
-        canRetry: false,
-      },
-    };
+    const isStandalonePWA =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+
+    if (!isStandalonePWA) {
+      return {
+        supported: false,
+        reason: "ios-safari-not-supported",
+        browserInfo,
+        userGuidance: {
+          title: "iOS Safari Limitation",
+          message:
+            "Push notifications require the app to be installed. Add this site to your Home Screen first, then open it from there.",
+          steps: [
+            "Tap the Share button in Safari",
+            "Select \"Add to Home Screen\"",
+            "Open the app from your Home Screen",
+            "Enable notifications inside the app",
+          ],
+          canRetry: false,
+        },
+      };
+    }
+    // Standalone PWA on iOS 16.4+ — fall through to the general supported check
   }
 
   // General mobile browser check
