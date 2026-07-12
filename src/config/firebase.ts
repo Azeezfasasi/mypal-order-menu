@@ -215,6 +215,18 @@ export const requestNotificationPermission = async (): Promise<
         throw new Error("Firebase configuration is incomplete");
       }
 
+      // Lazy-initialize messaging if the async module-level setup hasn't
+      // completed yet (race condition on slow / mobile devices where the user
+      // taps "Enable" before isMessagingSupported().then() has resolved).
+      if (!messaging && app) {
+        try {
+          messaging = getMessaging(app);
+          console.log("✅ Firebase messaging lazy-initialized");
+        } catch (e) {
+          console.warn("Lazy messaging initialization failed:", e);
+        }
+      }
+
       if (!messaging) {
         console.warn("Firebase messaging not available");
         throw new Error("Firebase messaging not initialized");

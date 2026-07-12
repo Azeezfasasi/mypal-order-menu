@@ -334,18 +334,59 @@ function createOfflinePage() {
 }
 
 // --- Push / Notification handlers ---
-// NOTE: The manual "push" event listener has been intentionally removed.
-// Firebase Messaging's onBackgroundMessage (registered below) already handles
-// ALL FCM push events.  Having BOTH a manual push listener AND onBackgroundMessage
-// caused two showNotification() calls per message — the second one silently
-// failed on Android/iOS because the first had already shown or claimed the tag slot,
-// making push notifications appear unreliable on mobile devices.
+// We handle the push event DIRECTLY here instead of relying on Firebase's
+// onBackgroundMessage callback.  Root cause of mobile failure:
 //
-// Non-FCM push (direct Web Push): If you ever need to handle raw Web Push messages
-// that do NOT go through Firebase, restore a push listener here and guard it with
-//   if (!event.data.text().startsWith('{"fcmMessageId"')) { ... }
+//   onBackgroundMessage is not reliably invoked on Android Chrome for FCM
+//   notification-type messages (messages that carry a "notification" field).
+//   Chrome on Android may route those to its own notification layer first and
+//   never call the SDK handler, resulting in silent delivery failures.
 //
-// Click handling lives in notificationclick below and is unaffected.
+// Handling the push event manually gives us:
+//   • Guaranteed single notification per push (no SDK duplication)
+//   • Full control over icon / badge / vibrate / tag options
+//   • Works identically on Desktop, Android Chrome, and iOS 16.4+ PWA
+//
+// Firebase FCM JSON payload shapes:
+//   Notification message : { notification: {title,body,icon}, data:{…}, fcmMessageId }
+//   Data-only message    : { data:{…}, fcmMessageId }
+self.addEventListener("push", function (event) {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (e) {
+    console.warn("SW: Failed to parse push payload as JSON:", e);
+    return;
+  }
+
+  // Support both FCM notification messages and data-only messages
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+
+  const title = notification.title || data.title || "MyPal Business";
+  const options = {
+    body: notification.body || data.body || "You have a new notification",
+    icon: notification.icon || data.icon || "/android-chrome-192x192.png",
+    badge: "/favicon-32x32.png",
+    vibrate: [100, 50, 100],
+    // requireInteraction omitted — breaks display on many Android versions
+    data: {
+      dateOfArrival: Date.now(),
+      url: data.url || data.actionUrl || "https://business.mypal-inc.com",
+      ...data,
+    },
+    actions: [
+      { action: "open", title: "Open App" },
+      { action: "dismiss", title: "Dismiss" },
+    ],
+    tag: data.tag || payload.fcmMessageId || "notification",
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
 
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
@@ -429,38 +470,21 @@ const firebaseConfig = {
 };
 
 try {
-  const app = firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging(app);
-  messaging.onBackgroundMessage((payload) => {
-    const notificationTitle = payload.notification?.title || "MyPal Business";
-    const notificationOptions = {
-      body: payload.notification?.body || "You have a new notification",
-      icon: payload.notification?.icon || "/android-chrome-192x192.png",
-      badge: "/favicon-32x32.png",
-      vibrate: [100, 50, 100],
-      // requireInteraction: true is intentionally omitted — it prevents
-      // notifications from appearing on many Android devices and is not
-      // supported on iOS at all.
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: payload.data?.id || "notification",
-        url: payload.data?.url || "https://business.mypal-inc.com",
-        ...payload.data,
-      },
-      actions: [
-        { action: "open", title: "Open App" },
-        { action: "dismiss", title: "Dismiss" },
-      ],
-      tag: payload.data?.tag || "default",
-      renotify: true,
-    };
-    return self.registration.showNotification(
-      notificationTitle,
-      notificationOptions,
-    );
-  });
+  // Guard against "App already exists" if the SW context is reused
+  const app =
+    firebase.apps && firebase.apps.length > 0
+      ? firebase.app()
+      : firebase.initializeApp(firebaseConfig);
+
+  // Initialize messaging so Firebase's internal push subscription management
+  // works correctly with getToken() on the client side.
+  // We intentionally do NOT register onBackgroundMessage here — the manual
+  // "push" event listener above is the sole notification handler, which ensures
+  // reliable delivery across Desktop, Android, and iOS PWA without any SDK
+  // version-specific quirks.
+  firebase.messaging(app);
 } catch (err) {
-  console.warn("SW: Firebase messaging initialization failed:", err);
+  console.warn("SW: Firebase initialization failed:", err);
 }
 
 // Messages from client: SKIP_WAITING, GET_VERSION, and NOTIFICATION_API
