@@ -210,12 +210,12 @@ export default function OrdersPage() {
             isActive={selectedStatus === "Delivered"}
             onClick={() => setSelectedStatus("Delivered")}
           />
-          <StatusFilter
+          {/* <StatusFilter
             label="Cancelled"
             count={getPillCount("Cancelled")}
             isActive={selectedStatus === "Cancelled"}
             onClick={() => setSelectedStatus("Cancelled")}
-          />
+          /> */}
         </div>
       </div>
 
