@@ -4,20 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
-// import { BusinessCategoryType } from "@/types/enums";
+import { BusinessCategoryType } from "@/types/enums";
 import {
-  // Bell,
   ChevronLeft,
   ChevronRight,
-  // FileBarChart,
   HelpCircle,
-  // HousePlus,
   LayoutDashboard,
-  // LayoutGrid,
   ShoppingCart,
   Settings,
-  // Share2,
-  // Store,
   UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
@@ -53,9 +47,9 @@ export default function DashboardSidebar({
     setPrevPathname(pathname);
   }, [isMobile, isOpen, onToggle, pathname, prevPathname]); // Only depend on pathname
 
-  // const [selectedBusinessType,] = useState(
-  //   business?.category?.business_type,
-  // );
+  const [selectedBusinessType,] = useState(
+    business?.category?.business_type,
+  );
 
   const navItems = [
     {
@@ -63,57 +57,21 @@ export default function DashboardSidebar({
       href: "/dashboard",
       icon: LayoutDashboard,
     },
-    {
-      title: "Menu Management",
-      href: "menu-management",
-      icon: UtensilsCrossed,
-    },
-    {
-      title: "Orders",
-      href: "/orders",
-      icon: ShoppingCart,
-    },
-    // {
-    //   title: "Services and Offerings",
-    //   href: "/offerings",
-    //   icon: Store,
-    // },
-    // ...(selectedBusinessType === BusinessCategoryType.FINEDINING
-    //   ? [{
-    //     title: "Menu & Order Management",
-    //     href: "/menu",
-    //     icon: UtensilsCrossed,
-    //   },] :
-    //   []),
-    // {
-    //   title: "Notifications",
-    //   href: "/notifications",
-    //   icon: Bell,
-    // },
-    // {
-    //   title: "Reports and Analytics",
-    //   href: "/reports",
-    //   icon: FileBarChart,
-    // },
-    // {
-    //   title: "Shared Activities",
-    //   href: "/shared",
-    //   icon: Share2,
-    // },
-    // ...(selectedBusinessType === BusinessCategoryType.HOTELEXPERIENCE || selectedBusinessType === BusinessCategoryType.SHORTLET
-    //   ? [{
-    //     title: "Reservation Availability",
-    //     href: "/reservation-availability",
-    //     icon: HousePlus,
-    //   },] :
-    //   []),
-    // ...(selectedBusinessType === BusinessCategoryType.FINEDINING || selectedBusinessType === BusinessCategoryType.BUFFET
-    //   ? [{
-    //     title: "Table Management",
-    //     href: "/table-management",
-    //     icon: LayoutGrid,
-    //   }] :
-    //   []),
+    ...(selectedBusinessType === BusinessCategoryType.ICONICDELICACIES
+      ? [
+          {
+            title: "Menu Management",
+            href: "menu-management",
+            icon: UtensilsCrossed,
+          },
+          {
+            title: "Orders",
+            href: "/orders",
+            icon: ShoppingCart,
+          }
+        ]
+      : []
+    ),
     {
       title: "Settings",
       href: "/settings",
