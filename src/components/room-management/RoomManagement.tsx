@@ -593,11 +593,14 @@ export default function RoomManagement() {
                     {room.soldCount} sold
                   </p>
                 </div>
+                <button className="hidden md:block text-gray-400 hover:text-gray-600 ml-10">
+                  <MoreVertical className="w-5 h-5" />
+                </button>
               </div>
 
               {/* Action Column */}
-              <div className="md:w-full flex justify-end flex-col items-end gap-2">
-                <button className="hidden text-gray-400 hover:text-gray-600">
+              <div className="md:hidden flex flex-col items-end gap-2">
+                <button className="text-gray-400 hover:text-gray-600">
                   <MoreVertical className="w-5 h-5" />
                 </button>
 
