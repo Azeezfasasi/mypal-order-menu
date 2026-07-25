@@ -161,6 +161,14 @@ export const ENDPOINTS = {
     ORDER_STATUS_UPDATE: (id: string) => `/business/order/${id}`,
   },
 
+  ROOM_MANAGEMENT: {
+    STATUS: ({ date, start_date, end_date }: { date: string; start_date: string; end_date: string }) =>
+      `/mobile/business/room-management/status?date=${date}&start_date=${start_date}&end_date=${end_date}`,
+    ACTIVITIES: "/mobile/business/room-management/activities",
+    BLOCK_STATE: "/mobile/business/room-management/state/block",
+    QUANTITY_STATE: "/mobile/business/room-management/state/quantity",
+  },
+
   BUSINESS_CATEGORIES: {
     GET_ALL: "/categories",
     CREATE: "/create-category",

@@ -11,6 +11,7 @@ import { AlertCircle, Loader } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import type { Order } from "@/services/api/orders";
+import RoomManagement from "@/components/room-management/RoomManagement";
 // import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
@@ -67,6 +68,38 @@ export default function DashboardPage() {
     return `You're signed in with the wrong account. Your current account (${business?.category?.name || "this account"}) doesn't have access to this section. Please sign in or switch to an account that has access to ${required}.`;
   };
 
+  // Renders a single error banner. Extracted so stats and orders errors can
+  // each be shown independently instead of one silently hiding the other.
+  const renderErrorBanner = (error: string | null, key: string) => {
+    if (!error) return null;
+    const isAuthError = isAuthorizationError(error);
+    return (
+      <>
+      {isIconicDelicacy && isAuthError && (
+      <div
+        key={key}
+        className={`border rounded-lg p-4 flex gap-3 ${isAuthError ? 'bg-yellow-50 border-yellow-400' : 'bg-red-50 border-red-200'}`}
+      >
+        <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAuthError ? 'text-yellow-600' : 'text-red-600'}`} />
+        <div>
+          <p className={`text-sm font-semibold ${isAuthError ? 'text-yellow-800' : 'text-red-800'}`}>
+            {isAuthError ? 'Account Access Issue' : 'API Error'}
+          </p>
+          <p className={`md:text-xs text-base ${isAuthError ? 'text-yellow-700' : 'text-red-700'} mt-1`}>
+            {isAuthError ? getAuthErrorMessage(error) : error}
+          </p>
+        </div>
+      </div>
+      )}
+      </>
+    );
+  };
+
+  // Only businesses in the "hotel experience" category can access Room Management
+  const isHotelExperience = String(business?.category?.name ?? "").toLowerCase().includes("hotel");
+
+  const isIconicDelicacy = String(business?.category?.name ?? "").toLowerCase().includes("Iconic Delicacies")
+
   return (
     <div className="space-y-6 px-0">
       {/* Loading State */}
@@ -80,23 +113,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Error Messages */}
-      {(statsError || ordersError) && (
-        <div className={`border rounded-lg p-4 flex gap-3 ${isAuthorizationError(statsError || ordersError) ? 'bg-yellow-50 border-yellow-400' : 'bg-red-50 border-red-200'}`}>
-          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-600' : 'text-red-600'}`} />
-          <div>
-            <p className={`text-sm font-semibold ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-800' : 'text-red-800'}`}>
-              {isAuthorizationError(statsError || ordersError) ? 'Account Access Issue' : 'API Error'}
-            </p>
-            <p className={`md:text-xs text-base ${isAuthorizationError(statsError || ordersError) ? 'text-yellow-700' : 'text-red-700'} mt-1`}>
-              {isAuthorizationError(statsError || ordersError) 
-                ? getAuthErrorMessage(statsError || ordersError)
-                : (statsError || ordersError)
-              }
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Error Messages - stats and orders errors are rendered independently
+          so one doesn't get silently dropped when both are present */}
+      {statsError && renderErrorBanner(statsError, "stats-error")}
+      {ordersError && renderErrorBanner(ordersError, "orders-error")}
+
       {/* Welcome Section */}
       <div className="flex items-center justify-between">
         <div>
@@ -111,28 +132,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Search Box - lives outside the stats-gated block so it doesn't
+          disappear when stats are loading/errored but orders are fine */}
+      {!ordersLoading && !ordersError && (
+        <div className="relative mb-4 z-0">
+          <Image
+            width={20}
+            height={20}
+            src="/images/search.svg"
+            alt="Search Icon"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+          />
+          <Input
+            type="search"
+            placeholder="Search by order id, customer name, item name..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="w-1/2 md:w-full pl-8 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+
       {/* Live Overview */}
       {!statsLoading && !statsError && stats && (
         <div>
           <h2 className="text-[20px] leading-6.5 font-extrabold text-[#031927] mb-4">Live Overview</h2>
-
-          {/* Search Box */}
-          <div className="relative mb-4 z-0">
-            <Image
-              width={20}
-              height={20}
-              src="/images/search.svg"
-              alt="Search Icon"
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-            />
-            <Input
-              type="search"
-              placeholder="Search by order id, customer name, item name..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-1/2 md:w-full pl-8 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
 
           {/* Stats Grid - 2x2 */}
           <div className="grid grid-cols-4 md:grid-cols-2 gap-3">
@@ -213,6 +237,8 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* Room Management Section - For only hotel experience business category */}
+      {isHotelExperience && <RoomManagement />}
     </div>
   );
 }
