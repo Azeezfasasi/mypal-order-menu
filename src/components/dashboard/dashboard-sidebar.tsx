@@ -163,7 +163,7 @@ export default function DashboardSidebar({
                 Pal
               </span>
             </h1>
-            <p className="text-white md:text-[14px] text-[14px]">Iconic Delicacy Order Menu</p>
+            <p className="text-white md:text-[14px] text-[14px] truncate">Business Operations</p>
           </div>
           {isMobile && (
             <Button
