@@ -22,6 +22,9 @@ export interface RoomManagementStatusRoom {
   price?: number;
   min_nights?: number;
   max_nights?: number;
+  image_url?: string;
+  image_urls?: string[];
+  images?: string[];
 }
 
 export interface RoomManagementStatusResponse {

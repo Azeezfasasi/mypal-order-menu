@@ -956,6 +956,15 @@ function formatDropdownDate(dateStr: string): string {
   });
 }
 
+function getRoomImage(room: RoomManagementStatusRoom): string {
+  return (
+    room.image_url ||
+    room.images?.[0] ||
+    room.image_urls?.[0] ||
+    "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80"
+  );
+}
+
 export default function RoomManagement() {
   const [rooms, setRooms] = useState<Room[]>([]);
 
@@ -1042,8 +1051,7 @@ export default function RoomManagement() {
                 : "1 — 28 nights",
             maxGuests: 1,
             minNights: room.min_nights ?? 1,
-            imageUrl:
-              "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80",
+            imageUrl: getRoomImage(room),
           };
         }),
       );
