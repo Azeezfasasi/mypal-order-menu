@@ -1,0 +1,245 @@
+"use client"
+
+import { useState } from "react";
+import { StatsCard } from "@/components/dashboard/stats-card";
+import { OrdersInProgress } from "@/components/dashboard/orders-in-progress";
+import { MealPrepAlert } from "@/components/dashboard/meal-prep-alert";
+import { useOrderStats, useActiveOrders } from "@/hooks/use-orders";
+import { useAuthStore } from "@/stores/auth-store";
+import { AlertCircle, Loader } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import Image from "next/image";
+import type { Order } from "@/services/api/orders";
+
+export default function OrderManagement() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const business = useAuthStore((state) => state.business);
+  const primaryLinkedBusinessId = business?.linkedBusinesses?.find((lb) => lb.is_primary)?.id;
+  const businessExt = business as unknown as Record<string, unknown> | null;
+  const branchId =
+    primaryLinkedBusinessId ??
+    business?.id ??
+    (businessExt?.primaryBusinessId as string | undefined) ??
+    (businessExt?.primary_business_id as string | undefined) ??
+    business?.linkedBusinesses?.[0]?.id ??
+    undefined;
+
+  const categoryName = String(business?.category?.name ?? "").toLowerCase();
+  const categoryType = String(business?.category?.business_type ?? business?.business_type ?? "").toLowerCase();
+
+  const isIconicDelicacy =
+    categoryName.includes("iconic delicacies") ||
+    categoryType.includes("iconic delicacies") ||
+    categoryType.includes("iconicdelicacies");
+  const isMainstream =
+    categoryName.includes("mainstream") ||
+    categoryType.includes("mainstream");
+
+  // The orders API authorizes Mainstream and Iconic Delicacies accounts only
+  // (per the 403 message: "Required: Mainstream, Iconic Delicacies").
+  const canAccessOrders = isIconicDelicacy || isMainstream;
+  const shouldFetchOrders = canAccessOrders && !!branchId;
+
+  const ordersBranchId = shouldFetchOrders ? branchId : undefined;
+
+  const { stats, loading: statsLoading, error: statsError } = useOrderStats(ordersBranchId, shouldFetchOrders);
+  const { orders, loading: ordersLoading, error: ordersError } = useActiveOrders(ordersBranchId, shouldFetchOrders);
+
+  // Check if error is an authorization error
+  const isAuthorizationError = (error: string | null) => {
+    return error && (error.includes("not authorized") || error.includes("403"));
+  };
+
+  const normalizeSearchValue = (value: unknown) => {
+    if (value == null) return "";
+    return String(value).trim().toLowerCase();
+  };
+
+  const orderMatchesSearch = (order: Order, query: string) => {
+    const normalizedQuery = normalizeSearchValue(query);
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const searchableValues = [
+      order.id,
+      order.orderNumber,
+      order.customer?.name,
+      order.customer?.address,
+      order.status,
+      ...(order.items?.flatMap((item) => [item.name, item.customerPreference]) ?? []),
+    ];
+
+    return searchableValues.some((value) => normalizeSearchValue(value).includes(normalizedQuery));
+  };
+
+  const filteredOrders = (orders ?? []).filter((order) => orderMatchesSearch(order, searchQuery));
+
+  const getAuthErrorMessage = (error: string | null) => {
+    if (!error) return null;
+    // Try to extract the required business types from the error message
+    const match = error.match(/Required:\s*(.+?)(?:,|$)/);
+    const required = match ? match[1].trim() : "Iconic Delicacies";
+    return `You're signed in with the wrong account. Your current account (${business?.category?.name || "this account"}) doesn't have access to this section. Please sign in or switch to an account that has access to ${required}.`;
+  };
+
+  // Renders a single error banner. Extracted so stats and orders errors can
+  // each be shown independently instead of one silently hiding the other.
+  const renderErrorBanner = (error: string | null, key: string) => {
+    if (!error) return null;
+    const isAuthError = isAuthorizationError(error);
+    return (
+      <div
+        key={key}
+        className={`border rounded-lg p-4 flex gap-3 ${isAuthError ? 'bg-yellow-50 border-yellow-400' : 'bg-red-50 border-red-200'}`}
+      >
+        <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAuthError ? 'text-yellow-600' : 'text-red-600'}`} />
+        <div>
+          <p className={`text-sm font-semibold ${isAuthError ? 'text-yellow-800' : 'text-red-800'}`}>
+            {isAuthError ? 'Account Access Issue' : 'API Error'}
+          </p>
+          <p className={`md:text-xs text-base ${isAuthError ? 'text-yellow-700' : 'text-red-700'} mt-1`}>
+            {isAuthError ? getAuthErrorMessage(error) : error}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 px-0">
+      {/* Everything below is specific to order-taking businesses (Mainstream /
+          Iconic Delicacies) — gated on canAccessOrders so a Hotel Experience
+          account neither sees nor fetches any of it. */}
+      {canAccessOrders && (
+        <>
+          {/* Loading State */}
+          {(statsLoading || ordersLoading) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+              <Loader className="w-5 h-5 text-blue-600 shrink-0 mt-0.5 animate-spin" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800">
+                  Loading {business?.business_name || "your"} dashboard data...
+                </p>
+                <p className="text-xs text-blue-700 mt-1">Fetching from API</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Messages - stats and orders errors are rendered independently
+              so one doesn't get silently dropped when both are present */}
+          {statsError && renderErrorBanner(statsError, "stats-error")}
+          {ordersError && renderErrorBanner(ordersError, "orders-error")}
+
+          {/* Search Box - lives outside the stats-gated block so it doesn't
+              disappear when stats are loading/errored but orders are fine */}
+          {!ordersLoading && !ordersError && (
+            <div className="relative mb-4 z-0">
+              <Image
+                width={20}
+                height={20}
+                src="/images/search.svg"
+                alt="Search Icon"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+              />
+              <Input
+                type="search"
+                placeholder="Search by order id, customer name, item name..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-1/2 md:w-full pl-8 py-6 bg-white rounded-[100px] border border-[#E1E3E7] z-0 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          {/* Live Overview */}
+          {!statsLoading && !statsError && stats && (
+            <div>
+              <h2 className="text-[20px] leading-6.5 font-extrabold text-[#031927] mb-4">Live Overview</h2>
+
+              {/* Stats Grid - 2x2 */}
+              <div className="grid grid-cols-4 md:grid-cols-2 gap-3">
+                <StatsCard
+                  icon={
+                    <Image
+                      src="/images/activeorders.svg"
+                      alt="Active Orders"
+                      width={32}
+                      height={32}
+                    />
+                  }
+                  number={stats.activeOrders || 0}
+                  label="Active Orders"
+                  subtext={`${stats.newOrders || 0} new`}
+                  subtextIcon={<Image src="/images/orderarrow.svg" alt="Arrow Up" width={12} height={12} />}
+                  bgColor="bg-orange-50"
+                />
+                <StatsCard
+                  icon={
+                    <Image
+                      src="/images/bike.svg"
+                      alt="Riders Incoming"
+                      width={32}
+                      height={32}
+                    />
+                  }
+                  number={stats.ridersIncoming || 0}
+                  label="Riders Incoming"
+                  subtext={stats.ridersETA || "N/A"}
+                  subtextColor="blue"
+                  bgColor="bg-blue-50"
+                />
+                <StatsCard
+                  icon={
+                    <Image
+                      src="/images/completed.svg"
+                      alt="Completed Today"
+                      width={32}
+                      height={32}
+                    />
+                  }
+                  number={stats.completedToday || 0}
+                  label="Completed Today"
+                  subtext={`${stats.delayedPercentage || 0}%`}
+                  subtextColor="red"
+                  subtextIcon={<Image src="/images/completedarrow.svg" alt="Arrow Up" width={12} height={12} />}
+                  bgColor="bg-green-50"
+                />
+                <StatsCard
+                  icon={
+                    <Image
+                      src="/images/clock.svg"
+                      alt="Delayed Orders"
+                      width={32}
+                      height={32}
+                    />
+                  }
+                  number={stats.delayedOrders || 0}
+                  label="Delayed Orders"
+                  subtext="View Now"
+                  subtextColor="red"
+                  bgColor="bg-red-50"
+                />
+              </div>
+            </div>
+          )}
+
+          {!ordersLoading && !ordersError && (
+            <>
+              {/* Meal Prep Alert */}
+              <MealPrepAlert
+                title="Meal prep is time sensitive!"
+                description="Keep an eye on countdowns to avoid delays."
+              />
+
+              <OrdersInProgress orders={filteredOrders} searchQuery={searchQuery} />
+            </>
+          )}
+        </>
+      )}
+
+      
+    </div>
+  );
+}

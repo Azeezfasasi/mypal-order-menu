@@ -28,6 +28,18 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const business = useAuthStore((state) => state.business);
 
+  const categoryName = String(business?.category?.name ?? "").toLowerCase();
+  const categoryType = String(business?.category?.business_type ?? business?.business_type ?? "").toLowerCase();
+
+  const isIconicDelicacy =
+    categoryName.includes("iconic delicacies") ||
+    categoryType.includes("iconic delicacies") ||
+    categoryType.includes("iconicdelicacies");
+  const isMainstream =
+    categoryName.includes("mainstream") ||
+    categoryType.includes("mainstream");
+  const canAccessOrders = isIconicDelicacy || isMainstream;
+
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
@@ -42,20 +54,20 @@ export default function OrdersPage() {
     () => ({ limit: 1, page: 1, sort: "createdAt", order: "DESC" as const }),
     []
   );
-  const { total: totalOrders } = useOrders(countsFilters);
+  const { total: totalOrders } = useOrders(countsFilters, canAccessOrders);
 
-  const orderFilters = useMemo(
-    () => ({
+  const orderFilters = useMemo(() => {
+    const status = STATUS_API_MAP[selectedStatus];
+    return {
       limit: pageSize,
-      page: page,
+      page,
       sort: "createdAt",
       order: "DESC" as const,
-      ...(STATUS_API_MAP[selectedStatus] && { status: STATUS_API_MAP[selectedStatus] }),
-    }),
-    [page, selectedStatus]
-  );
+      status,
+    } as const;
+  }, [page, selectedStatus]);
 
-  const { orders: apiOrders, total: filteredTotal, loading, error } = useOrders(orderFilters);
+  const { orders: apiOrders, total: filteredTotal, loading, error } = useOrders(orderFilters, canAccessOrders);
 
   // Accurate per-status totals fetched on mount (6 parallel lightweight requests).
   const { counts: mountCounts } = useOrderStatusCounts();
