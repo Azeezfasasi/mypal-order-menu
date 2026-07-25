@@ -837,6 +837,8 @@ import {
   Clock,
   Moon,
   User,
+  Hotel,
+  Bed,
 } from "lucide-react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1544,7 +1546,9 @@ export default function RoomManagement() {
                     {room.name}
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                    {room.floor} • {room.bedType}
+                    <span className="flex items-center gap-1">
+                      <Hotel className="w-3 h-3" /> {room.floor} • <Bed className="w-4 h-4" /> {room.bedType}
+                    </span>
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     {room.soldCount} sold
@@ -1595,7 +1599,7 @@ export default function RoomManagement() {
             {/* Inventory Controls & Price Row */}
             <div className="flex items-center justify-between pt-1">
               <div>
-                <p className="text-[11px] text-gray-400 font-medium mb-1">
+                <p className="text-[11px] text-gray-500 font-medium mb-1">
                   Inventory
                 </p>
                 <div className="flex items-center gap-2">
@@ -1619,7 +1623,7 @@ export default function RoomManagement() {
 
               {/* Price & Icons */}
               <div className="text-right">
-                <p className="text-[11px] text-gray-400 font-medium mb-1">
+                <p className="text-[11px] text-gray-500 font-medium mb-1">
                   Amount
                 </p>
                 <div className="flex items-center gap-2">
@@ -1643,7 +1647,7 @@ export default function RoomManagement() {
 
             {/* Bottom Row: Min/Max Nights */}
             <div className="flex items-center justify-between text-xs text-gray-500 pt-0.5">
-              <div className="flex items-center gap-1.5 text-gray-400 font-medium">
+              <div className="flex items-center gap-1.5 text-gray-500 font-medium">
                 <Clock className="w-3.5 h-3.5" />
                 <span>Min. & max. nights</span>
               </div>
