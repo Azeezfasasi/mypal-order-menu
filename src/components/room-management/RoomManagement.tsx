@@ -16,6 +16,9 @@ import {
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { roomManagementApi } from "@/services/api/room-management-api";
+import { toast } from "sonner";
+import type { RoomManagementStatusResponse, RoomManagementStatusRoom } from "@/services/api/room-management-api";
+import type { BaseApiResponse } from "@/types/api";
 
 // Types matching your backend data structure
 export interface Room {
@@ -171,7 +174,15 @@ export default function RoomManagement() {
   }, [roomStatusData]);
 
   const invalidateRoomStatus = () => {
-    queryClient.invalidateQueries({ queryKey: ["roomManagement", "status"] });
+    // Invalidate the exact query for the current date range so React Query
+    // refetches the updated room status. The query used in
+    // `useGetRoomManagementStatus` includes the date/start_date/end_date
+    // segments, so invalidating just ["roomManagement","status"] (exact
+    // match) won't match. Use the full key to ensure the query is invalidated.
+    queryClient.invalidateQueries({
+      queryKey: ["roomManagement", "status", selectedDate, startDate, endDate],
+      exact: true,
+    });
   };
 
   const handleSelectDate = (date: string) => {
@@ -181,9 +192,7 @@ export default function RoomManagement() {
 
   const handleInventoryChange = async (id: string, delta: number) => {
     const nextRooms = rooms.map((room) =>
-      room.id === id
-        ? { ...room, inventory: Math.max(0, room.inventory + delta) }
-        : room,
+      room.id === id ? { ...room, inventory: Math.max(0, room.inventory + delta) } : room,
     );
     setRooms(nextRooms);
 
@@ -193,7 +202,41 @@ export default function RoomManagement() {
       return;
     }
 
-    await updateRoomQuantityMutation.mutateAsync(
+    const statusKey = ["roomManagement", "status", selectedDate, startDate, endDate];
+    const previousCache = queryClient.getQueryData(statusKey) as
+      | BaseApiResponse<RoomManagementStatusResponse>
+      | undefined;
+
+    // Optimistically update the cache so the UI shows the new value immediately.
+    try {
+      queryClient.setQueryData(statusKey, (oldData: unknown) => {
+        const old = oldData as BaseApiResponse<RoomManagementStatusResponse> | undefined;
+        if (!old?.data?.rooms) return oldData;
+        const updatedRooms = old.data.rooms.map((r: RoomManagementStatusRoom) =>
+          r.id === updatedRoom.entityId ? { ...r, inventory_amount: updatedRoom.inventory } : r,
+        );
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            rooms: updatedRooms,
+          },
+        } as BaseApiResponse<RoomManagementStatusResponse>;
+      });
+    } catch (e) {
+      // best-effort
+      console.warn("Failed to optimistically update cache:", e);
+    }
+
+    // Log the outgoing PATCH payload for debugging.
+    console.log('updateRoomQuantity request:', {
+      entity_id: updatedRoom.entityId,
+      entity_type: updatedRoom.entityType || "Accommodation",
+      dates: [selectedDate],
+      quantity_override: updatedRoom.inventory,
+    });
+
+    updateRoomQuantityMutation.mutate(
       {
         entity_id: updatedRoom.entityId,
         entity_type: updatedRoom.entityType || "Accommodation",
@@ -201,17 +244,137 @@ export default function RoomManagement() {
         quantity_override: updatedRoom.inventory,
       },
       {
-        onSuccess: () => {
-          invalidateRoomStatus();
+        onSuccess: (res) => {
+          // Log mutation response for debugging.
+          console.log('updateRoomQuantity response:', res);
+
+          // Reconcile cache with the new value (best-effort) then refetch.
+          try {
+            queryClient.setQueryData(statusKey, (oldData: unknown) => {
+              const old = oldData as BaseApiResponse<RoomManagementStatusResponse> | undefined;
+              if (!old?.data?.rooms) return oldData;
+              const updatedRooms = old.data.rooms.map((r: RoomManagementStatusRoom) =>
+                r.id === updatedRoom.entityId ? { ...r, inventory_amount: updatedRoom.inventory } : r,
+              );
+              return {
+                ...old,
+                data: {
+                  ...old.data,
+                  rooms: updatedRooms,
+                },
+              } as BaseApiResponse<RoomManagementStatusResponse>;
+            });
+          } catch (e) {
+            console.warn("Failed to reconcile cache after success:", e);
+          }
+
+          // Start a short persistence check: invalidate+poll a few times to
+          // confirm the backend actually persisted the update. This is a
+          // best-effort client-side workaround for eventual-consistency APIs.
+          (async () => {
+            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+            const attempts = 5;
+            const delay = 600; // ms
+            let persisted = false;
+            for (let i = 0; i < attempts; i++) {
+              // trigger a refetch
+              invalidateRoomStatus();
+              await sleep(delay);
+              const latest = queryClient.getQueryData(statusKey) as BaseApiResponse<RoomManagementStatusResponse> | undefined;
+              const found = latest?.data?.rooms?.find((r: RoomManagementStatusRoom) => r.id === updatedRoom.entityId);
+              if (found && found.inventory_amount === updatedRoom.inventory) {
+                persisted = true;
+                break;
+              }
+            }
+
+            if (!persisted) {
+              // Show a user-facing notification with retry action.
+              toast.error("Update not persisted", {
+                description: "We couldn't confirm the inventory update on the server.",
+                action: {
+                  label: "Retry",
+                  // Retry will re-run the same mutation with the last payload.
+                  onClick: () => {
+                    updateRoomQuantityMutation.mutate({
+                      entity_id: updatedRoom.entityId,
+                      entity_type: updatedRoom.entityType || "Accommodation",
+                      dates: [selectedDate],
+                      quantity_override: updatedRoom.inventory,
+                    });
+                  },
+                },
+              });
+              console.warn("Inventory update may not have persisted on server for", updatedRoom.entityId);
+            } else {
+              console.log("Inventory persisted on server for", updatedRoom.entityId);
+            }
+          })();
+        },
+        onError: (err) => {
+          console.error('updateRoomQuantity failed:', err);
+
+          // Roll back optimistic cache and UI state if we have previous data.
+          if (previousCache) {
+            try {
+              queryClient.setQueryData(statusKey, previousCache as unknown as BaseApiResponse<RoomManagementStatusResponse>);
+            } catch (e) {
+              console.warn('Failed to rollback cache:', e);
+            }
+
+            try {
+              const prevRooms = previousCache?.data?.rooms;
+              if (Array.isArray(prevRooms)) {
+                setRooms(prevRooms.map((r: RoomManagementStatusRoom) => ({
+                  id: r.id || r.name,
+                  entityId: r.id,
+                  entityType: 'Accommodation',
+                  name: r.name,
+                  category: 'Standard',
+                  floor: String(r.floor ?? ''),
+                  bedType: r.bed_type || '',
+                  soldCount: r.sold_count ?? 0,
+                  isAvailable: typeof r.status === 'string' ? r.status.toLowerCase() === 'available' : true,
+                  inventory: r.inventory_amount ?? 0,
+                  pricePerNight: r.price ?? 0,
+                  maxNights: r.min_nights && r.max_nights ? `${r.min_nights} — ${r.max_nights} nights` : '1 — 28 nights',
+                  maxGuests: 1,
+                  minNights: r.min_nights ?? 1,
+                  imageUrl: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80',
+                })));
+              }
+            } catch (e) {
+              console.warn('Failed to restore rooms state from previous cache:', e);
+            }
+          } else {
+            invalidateRoomStatus();
+          }
         },
       },
     );
   };
 
+  // Log server status responses for debugging — helps confirm whether the
+  // backend persisted the mutation or returns stale data.
+  React.useEffect(() => {
+    if (!roomStatusData?.data) return;
+    // Log the full payload with a timestamp.
+    console.log('roomManagement status fetched:', {
+      time: new Date().toISOString(),
+      selectedDate: roomStatusData.data.date ?? selectedDate,
+      rooms: roomStatusData.data.rooms,
+    });
+
+    // If we recently updated a room, log its inventory specifically.
+    const lux = roomStatusData.data.rooms?.find((r: RoomManagementStatusRoom) => r.id === (rooms[0]?.entityId ?? rooms[0]?.id));
+    if (lux) {
+      console.log('Matched room after fetch:', { id: lux.id, inventory_amount: lux.inventory_amount });
+    }
+    }, [roomStatusData, rooms, selectedDate]);
+
   const handleToggleAvailability = async (id: string) => {
-    const nextRooms = rooms.map((room) =>
-      room.id === id ? { ...room, isAvailable: !room.isAvailable } : room,
-    );
+    const prevRooms = rooms;
+    const nextRooms = rooms.map((room) => (room.id === id ? { ...room, isAvailable: !room.isAvailable } : room));
     setRooms(nextRooms);
 
     const toggledRoom = nextRooms.find((room) => room.id === id);
@@ -220,19 +383,23 @@ export default function RoomManagement() {
       return;
     }
 
-    await blockRoomStateMutation.mutateAsync(
-      {
+    try {
+      await blockRoomStateMutation.mutateAsync({
         entity_id: toggledRoom.entityId,
         entity_type: toggledRoom.entityType || "Accommodation",
         dates: [selectedDate],
         is_blocked: !toggledRoom.isAvailable,
-      },
-      {
-        onSuccess: () => {
-          invalidateRoomStatus();
-        },
-      },
-    );
+      });
+
+      invalidateRoomStatus();
+
+      toast.success("Availability updated");
+    } catch (err) {
+      console.error("blockRoomState failed:", err);
+      // Roll back UI
+      setRooms(prevRooms);
+      toast.error("Could not update availability. Please try again.");
+    }
   };
 
   // Shifts the whole visible week forward/backward by 7 days, keeping the

@@ -129,7 +129,7 @@ const getOrdersFromResponse = (response: unknown): Order[] => {
   return Array.isArray(payload) ? (payload as unknown[]).map(normalizeOrder) : [];
 };
 
-export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
+export const useOrders = (filters?: OrderFilter, enabled = true): UseOrdersResult => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -137,6 +137,15 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      setError(null);
+      setOrders([]);
+      setTotal(0);
+      setStatusCounts({});
+      return;
+    }
+
     let isMounted = true;
     const fetchOrders = async () => {
       try {
@@ -163,14 +172,16 @@ export const useOrders = (filters?: OrderFilter): UseOrdersResult => {
         }
       }
     };
-    
+
     fetchOrders();
     return () => {
       isMounted = false;
     };
-  }, [filters]);
+  }, [filters, enabled]);
 
   const refetch = async () => {
+    if (!enabled) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -199,12 +210,19 @@ interface UseOrderStatsResult {
   refetch: () => void;
 }
 
-export const useOrderStats = (branchId?: string): UseOrderStatsResult => {
+export const useOrderStats = (branchId?: string, enabled = true): UseOrderStatsResult => {
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled || !branchId) {
+      setLoading(false);
+      setError(null);
+      setStats(null);
+      return;
+    }
+
     let isMounted = true;
     const fetchStats = async () => {
       try {
@@ -231,9 +249,11 @@ export const useOrderStats = (branchId?: string): UseOrderStatsResult => {
     return () => {
       isMounted = false;
     };
-  }, [branchId]);
+  }, [branchId, enabled]);
 
   const refetch = async () => {
+    if (!enabled) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -258,12 +278,19 @@ interface UseActiveOrdersResult {
   refetch: () => void;
 }
 
-export const useActiveOrders = (branchId?: string | string[]): UseActiveOrdersResult => {
+export const useActiveOrders = (branchId?: string | string[], enabled = true): UseActiveOrdersResult => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      setError(null);
+      setOrders([]);
+      return;
+    }
+
     let isMounted = true;
     const fetchActiveOrders = async () => {
       try {
@@ -318,9 +345,11 @@ export const useActiveOrders = (branchId?: string | string[]): UseActiveOrdersRe
     return () => {
       isMounted = false;
     };
-  }, [branchId]);
+  }, [branchId, enabled]);
 
   const refetch = async () => {
+    if (!enabled) return;
+
     try {
       setLoading(true);
       setError(null);
