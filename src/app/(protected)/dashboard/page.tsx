@@ -4,6 +4,7 @@ import OrderManagement from '@/components/room-management/OrderManagement'
 import RoomManagement from '@/components/room-management/RoomManagement'
 import { UnauthorizedAccess } from '@/components/dashboard/Unauthorizedaccess'
 import { useAuthStore } from "@/stores/auth-store";
+import BusinessAccountSwitcher from '@/components/dashboard/BusinessAccountSwitcher';
 
 // Every business category this dashboard currently knows how to route to.
 // Shown to the user when their account matches none of them.
@@ -54,6 +55,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="mb-4">
+        <BusinessAccountSwitcher />
+      </div>
+
       {isUnauthorized && (
         <UnauthorizedAccess
           currentCategory={business?.category?.name}
@@ -62,10 +67,14 @@ export default function DashboardPage() {
       )}
 
       {canAccessOrders &&
+      <>
         <OrderManagement />
+      </>
       }
       {isHotelExperience &&
-        <RoomManagement />
+        <>
+          <RoomManagement />
+        </>
       }
     </>
   )
