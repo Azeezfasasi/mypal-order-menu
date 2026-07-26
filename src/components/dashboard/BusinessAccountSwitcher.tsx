@@ -99,7 +99,13 @@ export default function AccountSwitcher({ onSwitch }: AccountSwitcherProps) {
               storeActions.updateBusiness(normalizedBiz as Partial<IStoredBusiness>);
             }
 
+            // Refresh app data and then force a full reload to ensure all pages
+            // and client-state depending on the previous business are fully updated.
             router.refresh();
+            if (typeof window !== "undefined") {
+              // small delay to allow React/Next to settle before hard reload
+              setTimeout(() => window.location.reload(), 100);
+            }
           }
         },
       },

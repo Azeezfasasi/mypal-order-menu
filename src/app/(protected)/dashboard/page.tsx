@@ -5,10 +5,11 @@ import RoomManagement from '@/components/room-management/RoomManagement'
 import { UnauthorizedAccess } from '@/components/dashboard/Unauthorizedaccess'
 import { useAuthStore } from "@/stores/auth-store";
 import BusinessAccountSwitcher from '@/components/dashboard/BusinessAccountSwitcher';
+import ShortletRoomManagement from '@/components/room-management/ShortletRoomManagement';
 
 // Every business category this dashboard currently knows how to route to.
 // Shown to the user when their account matches none of them.
-const SUPPORTED_CATEGORIES = ["Hotel Experience", "Iconic Delicacies"];
+const SUPPORTED_CATEGORIES = ["Hotel Experience", "Iconic Delicacies", "Short-let homes"];
 
 export default function DashboardPage() {
   const business = useAuthStore((state) => state.business);
@@ -26,10 +27,16 @@ export default function DashboardPage() {
   const isMainstream =
     categoryName.includes("mainstream") ||
     categoryType.includes("mainstream");
+  const isShortlet =
+    categoryName.includes("shortlet") ||
+    categoryType.includes("short-let homes") ||
+    categoryType.includes("shortlet homes") ||
+    categoryType.includes("shortlethomes") ||
+    categoryType.includes("short-let");
   const canAccessOrders = isIconicDelicacy || isMainstream;
 
   // No known section matches this account's category at all
-  const isUnauthorized = !canAccessOrders && !isHotelExperience;
+  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet;
 
   return (
     <>
@@ -75,6 +82,10 @@ export default function DashboardPage() {
         <>
           <RoomManagement />
         </>
+      }
+
+      {isShortlet &&
+        <ShortletRoomManagement />
       }
     </>
   )
