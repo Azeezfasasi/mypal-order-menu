@@ -33,12 +33,12 @@ export function NotificationFilters({
           </SelectItem>
           {/* <SelectItem value={NotificationType.EVENT_REMINDER}>
             Event Reminders
-          </SelectItem>
+          </SelectItem> */}
           <SelectItem value={NotificationType.RESERVATION_CONFIRMATION}>
             Reservations
           </SelectItem>
-          <SelectItem value={NotificationType.PROMOTION}>Promotions</SelectItem>
-          <SelectItem value={NotificationType.GENERAL}>General</SelectItem> */}
+          {/* <SelectItem value={NotificationType.PROMOTION}>Promotions</SelectItem> */}
+          <SelectItem value={NotificationType.GENERAL}>General</SelectItem>
         </SelectContent>
       </Select>
     </div>

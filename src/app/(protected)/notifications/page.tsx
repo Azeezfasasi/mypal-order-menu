@@ -1,11 +1,8 @@
 "use client";
 
 import { DeviceTokenManager } from "@/components/notifications/device-token-manager";
-import { NotificationFilters } from "@/components/notifications/notification-filters";
 import { NotificationList } from "@/components/notifications/notification-list";
-
 import { NotificationStats } from "@/components/notifications/notification-stats";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,16 +12,31 @@ import {
   useUnreadNotificationCount,
   useUserNotifications,
 } from "@/examples/notification-api-usage";
-import { NotificationType } from "@/types/enums";
+import { useAuthStore } from "@/stores/auth-store";
+import { BusinessCategoryType, NotificationType } from "@/types/enums";
 import { Bell, CheckCheck } from "lucide-react";
 import { useState } from "react";
 
+
+// Which notification tab a business category should land on by default.
+const getDefaultTabForCategory = (businessType?: string | null) => {
+  switch (businessType) {
+    case BusinessCategoryType.ICONICDELICACIES:
+      return "order_update";
+    case BusinessCategoryType.HOTELEXPERIENCE:
+    case BusinessCategoryType.SHORTLET:
+      return "reservation_confirmation";
+    default:
+      return "all";
+  }
+};
+
 export default function NotificationsPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const business = useAuthStore((state) => state.business);
+  const defaultTab = getDefaultTabForCategory(business?.category?.business_type);
+
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedType, setSelectedType] = useState<NotificationType | "all">(
-    "all",
-  );
 
   // Get unread count
   const unreadCount = useUnreadNotificationCount();
@@ -46,10 +58,29 @@ export default function NotificationsPage() {
     setCurrentPage(page);
   };
 
-  const handleTypeFilter = (type: NotificationType | "all") => {
-    setSelectedType(type);
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
+  // Determine which notification tabs the business can access based on their category
+  const categoryName = String(business?.category?.name ?? "").toLowerCase();
+  const categoryType = String(business?.category?.business_type ?? business?.business_type ?? "").toLowerCase();
+
+  const isHotelExperience =
+    categoryName.includes("hotel") ||
+    categoryType.includes("hotel experience") ||
+    categoryType.includes("hotelexperience");
+  const isIconicDelicacy =
+    categoryName.includes("iconic delicacies") ||
+    categoryType.includes("iconic delicacies") ||
+    categoryType.includes("iconicdelicacies");
+  const isMainstream =
+    categoryName.includes("mainstream") ||
+    categoryType.includes("mainstream");
+  const isShortlet =
+    categoryName.includes("shortlet") ||
+    categoryType.includes("short-let homes") ||
+    categoryType.includes("shortlet homes") ||
+    categoryType.includes("shortlethomes") ||
+    categoryType.includes("short-let");
+  const canAccessOrderNotifications = isIconicDelicacy || isMainstream;
+  const canAccessReservationNotifications = isHotelExperience || isShortlet;
 
   return (
     <div className="space-y-6 overflow-x-hidden">
@@ -110,10 +141,6 @@ export default function NotificationsPage() {
                 <CardTitle className="break-words">
                   Recent Notifications
                 </CardTitle>
-                <NotificationFilters
-                  selectedType={selectedType}
-                  onTypeChange={handleTypeFilter}
-                />
               </div>
             </CardHeader>
             <CardContent className="overflow-x-hidden">
@@ -121,37 +148,32 @@ export default function NotificationsPage() {
                 {/* desktop-first: enable horizontal scroll on smaller screens (lg: is max-width) */}
                 <div className="overflow-x-auto -mx-4 px-4 sm:-mx-2 sm:px-2">
                   <TabsList className="inline-flex w-auto gap-2 mb-2">
+                    {/* <TabsTrigger value="all" className="whitespace-nowrap">
+                      All
+                    </TabsTrigger> */}
+                    {canAccessOrderNotifications && (
+                      <TabsTrigger
+                        value="order_update"
+                        className="whitespace-nowrap"
+                      >
+                        Orders
+                      </TabsTrigger>
+                    )}
+                    {canAccessReservationNotifications && (
+                      <TabsTrigger
+                        value="reservation_confirmation"
+                        className="whitespace-nowrap"
+                      >
+                        Reservations
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger value="all" className="whitespace-nowrap">
                       All
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="order_update"
-                      className="whitespace-nowrap"
-                    >
-                      Orders
-                    </TabsTrigger>
-                    {/* <TabsTrigger
-                      value="event_reminder"
-                      className="whitespace-nowrap"
-                    >
-                      Events
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="reservation_confirmation"
-                      className="whitespace-nowrap"
-                    >
-                      Reservations
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="promotion"
-                      className="whitespace-nowrap"
-                    >
-                      Promotions
-                    </TabsTrigger>
-                    <TabsTrigger value="general" className="whitespace-nowrap">
+                    {/* <TabsTrigger value="general" className="whitespace-nowrap">
                       General
-                    </TabsTrigger>
-                    */}
+                    </TabsTrigger> */}
+                   
                   </TabsList>
                 </div>
 
