@@ -10,6 +10,7 @@ import { AlertCircle, Plus, Pencil, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import EditMenuItemModal from "@/components/menu-management/edit-menu-item-modal";
+import { useRoleAccess } from "@/hooks/use-role-access";
 
 interface MenuItem {
   id: string;
@@ -43,6 +44,8 @@ type FlattenedItem = MenuItem & { categoryId: string; categoryName: string };
 
 export default function MenuManagementPage() {
   const router = useRouter();
+  const { can: hasPermission } = useRoleAccess();
+  const canEditMenuItems = hasPermission("menu-item-edit");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [itemAvailability, setItemAvailability] = useState<Record<string, boolean>>({});
@@ -233,7 +236,7 @@ export default function MenuManagementPage() {
     preparationTime?: string;
     quantityOptions?: Array<{ label: string; price: number }>;
   }) => {
-    if (!selectedItem) return;
+    if (!selectedItem || !canEditMenuItems) return;
 
     const updatePromise = updateItem.mutateAsync({
       itemId: selectedItem.id,
@@ -479,15 +482,17 @@ export default function MenuManagementPage() {
 
                   {/* Action Buttons */}
                   <div className="mt-3 flex gap-2 pt-3 border-t border-gray-100 w-fit justify-end">
-                    <Button 
-                      onClick={() => {
-                        setSelectedItem(item);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
-                    >
-                      <Pencil className="w-4 h-4" /> Edit Item
-                    </Button>
+                    {canEditMenuItems && (
+                      <Button
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs font-medium py-2 w-fit"
+                      >
+                        <Pencil className="w-4 h-4" /> Edit Item
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
