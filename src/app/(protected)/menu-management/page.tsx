@@ -38,6 +38,7 @@ interface Category {
   subCategories?: Category[];
 }
 
+
 type CategoryData = Category;
 
 type FlattenedItem = MenuItem & { categoryId: string; categoryName: string };
