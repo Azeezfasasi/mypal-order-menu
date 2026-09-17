@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRoleAccess } from "@/hooks/use-role-access";
 
 interface DashboardSidebarProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export default function DashboardSidebar({
   const [showTutorial, setShowTutorial] = useState(false);
   const [prevPathname, setPrevPathname] = useState(pathname);
   const business = useAuthStore((state) => state.business);
+  const { can, role } = useRoleAccess();
 
   // Close sidebar when route changes (mobile only)
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function DashboardSidebar({
       {/* Sidebar - Fixed positioning and width handling */}
       <aside
         className={cn(
-          "flex h-full flex-col bg-[#001529] transition-all duration-300 ease-in-out pt-2",
+          "flex h-full flex-col bg-[#001529] transition-all duration-300 ease-in-out pt-5",
           // Desktop width handling
           !isMobile && isOpen && "w-64",
           !isMobile && !isOpen && "w-16",
@@ -103,25 +105,39 @@ export default function DashboardSidebar({
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center px-4 flex-shrink-0 relative">
-          <div className="flex flex-col items-start justify-center transition-all duration-300 gap-0">
-            <h1
+        <div className="flex h-16 items-center px-4 flex-shrink-0 relative mt-4 mb-4">
+          <div className="flex flex-col items-start justify-start transition-all duration-300 gap-2 w-full">
+            <div>
+              <h1
               className={cn(
                 "text-2xl font-bold text-white transition-all duration-300 font-sora",
                 !isOpen && !isMobile && "lg:opacity-0 scale-95",
               )}
-            >
-              My
-              <span
-                className={cn(
-                  "text-primary transition-all duration-300",
-                  !isOpen && !isMobile && "opacity-0",
-                )}
               >
-                Pal
-              </span>
-            </h1>
-            <p className="text-white md:text-[14px] text-[14px] truncate">Business Operations</p>
+                My
+                <span
+                  className={cn(
+                    "text-primary transition-all duration-300",
+                    !isOpen && !isMobile && "opacity-0",
+                  )}
+                >
+                  Pal
+                </span>
+              </h1>
+              <p className="text-white md:text-[14px] text-[14px] truncate">Business Operations</p>
+            </div>
+            <div className="flex flex-col gap-0">
+              {role && (
+              <div className="text-xs text-orange-600 font-semibold text-muted-foreground spx-4">
+                {role}
+              </div>
+              )}
+              {selectedBusinessType && (
+                <div className="text-xs text-gray-400 font-semibold text-muted-foreground psx-4">
+                  {selectedBusinessType}
+                </div>
+              )}
+            </div>
           </div>
           {isMobile && (
             <Button
