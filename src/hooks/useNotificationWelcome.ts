@@ -44,7 +44,11 @@ export function useNotificationWelcome() {
     (async () => {
       try {
         const sdkSupported = await isMessagingSupportedAsync();
-        if (!hasSeenWelcome || notificationPermission === "granted") return;
+        // Only prompt first-timers whose permission isn't already granted.
+        // (This was inverted — `!hasSeenWelcome` returned early — so new users
+        // never saw the modal and the banner, which needs the "seen" flag this
+        // modal sets, never appeared either.)
+        if (hasSeenWelcome || notificationPermission === "granted") return;
         if (sdkSupported) {
           const timer = setTimeout(() => {
             setShowWelcomeModal(true);
