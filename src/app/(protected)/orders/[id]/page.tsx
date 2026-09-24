@@ -252,6 +252,12 @@ export default function OrderDetailsPage() {
   const totalPrice = typeof order.totalPrice === "number" ? order.totalPrice : Number(order.totalPrice) || 0;
   const orderItems = Array.isArray(order.items) ? order.items : [];
   const itemCount = orderItems.length;
+  // Each item's special_instructions (normalized to customerPreference); prefix with the item name when there are several items.
+  const customerPreferences = orderItems
+    .filter((item: OrderItem) => String(item?.customerPreference ?? "").trim())
+    .map((item: OrderItem) =>
+      itemCount > 1 ? `${String(item.name)}: ${String(item.customerPreference)}` : String(item.customerPreference),
+    );
   const currentStatus = String(localStatus || order?.status || "pending").toLowerCase();
   const statusLabel = String(currentStatus || order.status || "processing")
     .replace(/(^|-)(\w)/g, (_, prefix, letter) => `${prefix || ""}${letter.toUpperCase()}`)
@@ -433,9 +439,13 @@ export default function OrderDetailsPage() {
               </div>
               <div className="flex flex-col ml-3">
                 <p className="text-[14.72px] leading-[30.95px] font-semibold text-[#8E4E09]">Customer preference</p>
-                {(order.address as Record<string, unknown>)?.notes ? (
-                  <p className="mt-1 text-sm text-slate-500">{String((order.address as Record<string, unknown>).notes)}</p>
-                ) : null}
+                {customerPreferences.length > 0 ? (
+                  customerPreferences.map((preference, index) => (
+                    <p key={index} className="mt-1 text-sm text-slate-500">{preference}</p>
+                  ))
+                ) : (
+                  <p className="mt-1 text-sm text-slate-500">No special instructions</p>
+                )}
               </div>
             </div>
 
