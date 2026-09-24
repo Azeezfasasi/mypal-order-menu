@@ -58,9 +58,23 @@ export default function OrderDetailsPage() {
     cancelled: [],
   };
 
+  // Third-party riders (Gokada, Chowdeck) own the Picked up / Delivered updates,
+  // so the business can only move these orders as far as Ready for pickup.
+  const THIRD_PARTY_DELIVERY_SERVICES = ["gokada", "chowdeck"];
+  const RIDER_MANAGED_STATUSES: OrderStatus[] = [OrderStatus.ONTRANSIT, OrderStatus.COMPLETED];
+  const deliveryService = String(order?.delivery_service ?? order?.deliveryService ?? "").trim().toLowerCase();
+  const isRiderManaged = THIRD_PARTY_DELIVERY_SERVICES.includes(deliveryService);
+
+  const getAllowedTransitions = (currentStatus: string): OrderStatus[] => {
+    const transitions = transitionMap[currentStatus] ?? [];
+    return isRiderManaged
+      ? transitions.filter((status) => !RIDER_MANAGED_STATUSES.includes(status))
+      : transitions;
+  };
+
   const canTransitionTo = (status: OrderStatus) => {
     const normalized = String(localStatus || order?.status || "pending").toLowerCase();
-    return transitionMap[normalized]?.includes(status) ?? false;
+    return getAllowedTransitions(normalized).includes(status);
   };
 
   const actionLabels: Record<OrderStatus, string> = {
@@ -74,8 +88,16 @@ export default function OrderDetailsPage() {
   };
 
   const normalizedCurrentStatus = String(localStatus || order?.status || "pending").toLowerCase() as OrderStatus;
-  const currentActionStatus = transitionMap[normalizedCurrentStatus]?.[0];
-  const mainActionLabel = currentActionStatus ? actionLabels[currentActionStatus] : "No action available";
+  // The main button never cancels; cancelling stays in More Actions.
+  const currentActionStatus = getAllowedTransitions(normalizedCurrentStatus).find(
+    (status) => status !== OrderStatus.CANCELLED,
+  );
+  const awaitingRider = isRiderManaged && ["ready", "on-transit"].includes(normalizedCurrentStatus);
+  const mainActionLabel = currentActionStatus
+    ? actionLabels[currentActionStatus]
+    : awaitingRider
+    ? `Awaiting ${String(order?.delivery_service ?? order?.deliveryService)} rider updates`
+    : "No action available";
 
   const updateLocalTimeline = (status: string) => {
     setLocalTimeline((previous) => {
