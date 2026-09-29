@@ -42,7 +42,7 @@ const ViewOrders = () => {
 
 type TPaymentMethod = "CARD" | "BANK_TRANSFER" | "MOBILE_APP" | ""
 
-const OrderCard = ({ order }: { order: IOrdersResponse[number] }) => {
+export const OrderCard = ({ order }: { order: IOrdersResponse[number] }) => {
 
     const [openPaymentModal, setOpenPaymentModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<TPaymentMethod>("");

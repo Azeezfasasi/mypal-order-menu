@@ -6,10 +6,11 @@ import { UnauthorizedAccess } from '@/components/dashboard/Unauthorizedaccess'
 import { useAuthStore } from "@/stores/auth-store";
 import BusinessAccountSwitcher from '@/components/dashboard/BusinessAccountSwitcher';
 import ShortletRoomManagement from '@/components/room-management/ShortletRoomManagement';
+import FineDiningOverview from '@/components/dashboard/fine-dining/FineDiningOverview';
 
 // Every business category this dashboard currently knows how to route to.
 // Shown to the user when their account matches none of them.
-const SUPPORTED_CATEGORIES = ["Hotel Experience", "Iconic Delicacies", "Short-let homes"];
+const SUPPORTED_CATEGORIES = ["Hotel Experience", "Iconic Delicacies", "Short-let homes", "Fine Dining"];
 
 export default function DashboardPage() {
   const business = useAuthStore((state) => state.business);
@@ -33,10 +34,14 @@ export default function DashboardPage() {
     categoryType.includes("shortlet homes") ||
     categoryType.includes("shortlethomes") ||
     categoryType.includes("short-let");
+  const isFineDining =
+    categoryName.includes("fine dining") ||
+    categoryType.includes("fine dining") ||
+    categoryType.includes("finedining");
   const canAccessOrders = isIconicDelicacy || isMainstream;
 
   // No known section matches this account's category at all
-  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet;
+  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining;
 
   return (
     <>
@@ -49,6 +54,12 @@ export default function DashboardPage() {
             {isIconicDelicacy && (
             <p className="md:text-[12px] text-[14px] font-bold text-[#68798A] leading-[100%] flex items-center gap-1 mt-1">
               Order Manager
+              <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
+            </p>
+            )}
+            {isFineDining && (
+            <p className="md:text-[12px] text-[14px] font-bold text-[#68798A] leading-[100%] flex items-center gap-1 mt-1">
+              Order & Kitchen Overview
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
             </p>
             )}
@@ -86,6 +97,10 @@ export default function DashboardPage() {
 
       {isShortlet &&
         <ShortletRoomManagement />
+      }
+
+      {isFineDining &&
+        <FineDiningOverview />
       }
     </>
   )

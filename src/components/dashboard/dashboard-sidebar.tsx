@@ -34,7 +34,7 @@ export default function DashboardSidebar({
   const [showTutorial, setShowTutorial] = useState(false);
   const [prevPathname, setPrevPathname] = useState(pathname);
   const business = useAuthStore((state) => state.business);
-  const { can, role } = useRoleAccess();
+  const { role } = useRoleAccess();
 
   // Close sidebar when route changes (mobile only)
   useEffect(() => {
@@ -70,6 +70,21 @@ export default function DashboardSidebar({
             title: "Orders",
             href: "/orders",
             icon: ShoppingCart,
+          }
+        ]
+      : []
+    ),
+    ...(selectedBusinessType === BusinessCategoryType.FINEDINING
+      ? [
+          {
+            title: "Menu & Order Management",
+            href: "/menu",
+            icon: UtensilsCrossed,
+          },
+          {
+            title: "Table Management",
+            href: "/table-management",
+            icon: UtensilsCrossed,
           }
         ]
       : []
