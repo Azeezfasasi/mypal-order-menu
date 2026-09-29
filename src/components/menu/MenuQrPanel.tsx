@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth-store";
 
 // Base URL of the customer-facing digital menu; the business id is appended to it
-const MENU_BASE_URL = process.env.NEXT_PUBLIC_ORDER_MENU_URL || "https://menu.mypal.com";
+const MENU_BASE_URL = process.env.NEXT_PUBLIC_ORDER_MENU_URL || "https://operations.mypal-inc.com";
 
 const escapeHtml = (value: string) =>
     value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
