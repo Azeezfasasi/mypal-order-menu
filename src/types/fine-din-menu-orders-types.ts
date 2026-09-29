@@ -49,6 +49,7 @@ export type MenuCategoryResponse = {
 export interface ICreateOrder {
     waiter_name: string;
     guest_count: number;
+    table_id?: string;
     items: {
         menu_item_id: string;
         quantity: number;
@@ -74,7 +75,7 @@ export interface ICreateResponse {
     updatedAt: string;
 }
 
-interface IOrder {
+export interface IOrder {
     id: string;
     table_id: string | null;
     waiter_name: string;
@@ -108,7 +109,7 @@ interface IOrder {
     }[];
 }
 
-interface IKitchenTicket {
+export interface IKitchenTicket {
     order_id: string;
     table_id: string | null;
     waiter_name: string;
