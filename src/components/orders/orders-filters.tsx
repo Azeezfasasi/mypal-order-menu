@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { MapPin } from "lucide-react";
+import { MapPin, Truck } from "lucide-react";
 
 interface StatusFilterProps {
   label: string;
@@ -52,8 +52,25 @@ interface OrderListItemProps {
   prepTime: number;
   riderArrivalTime: number;
   customerPreference?: string;
+  orderMethod?: string;
+  deliveryService?: string;
   onClick?: () => void;
 }
+
+const orderMethodLabels: Record<string, string> = {
+  delivery: "Delivery",
+  selfpickup: "Self pickup",
+  eatin: "Eat-in",
+};
+
+// e.g. "Delivery · Gokada", "Self pickup", "Eat-in"
+const formatDeliveryMethod = (orderMethod?: string, deliveryService?: string) => {
+  const method = String(orderMethod ?? "").trim();
+  if (!method) return "";
+  const label = orderMethodLabels[method.toLowerCase().replace(/[\s_-]/g, "")] ?? method;
+  const service = String(deliveryService ?? "").trim();
+  return service ? `${label} · ${service}` : label;
+};
 
 const statusBadgeMap: Record<string, string> = {
   Processing: "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B]",
@@ -95,9 +112,12 @@ export function OrderListItem({
   prepTime,
   riderArrivalTime,
   customerPreference,
+  orderMethod,
+  deliveryService,
   onClick,
 }: OrderListItemProps) {
   const statusLabel = formatStatusLabel(status);
+  const deliveryMethodLabel = formatDeliveryMethod(orderMethod, deliveryService);
   const createdAtLabel = formatCreatedAt(createdAt);
 
   return (
@@ -130,6 +150,12 @@ export function OrderListItem({
                   <MapPin className="h-4 w-4 shrink-0" />
                   <span className="truncate">{location}</span>
                 </div>
+                {deliveryMethodLabel ? (
+                  <div className="flex items-center gap-2 text-[12px] leading-[26px] font-medium text-[#68798A]">
+                    <Truck className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{deliveryMethodLabel}</span>
+                  </div>
+                ) : null}
               </div>
               <span className={cn("md:hidden lg:hidden inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold", statusBadgeMap[statusLabel] ?? "bg-slate-100 text-slate-700 border-slate-200")}>{statusLabel}</span>
             </div>
@@ -154,7 +180,7 @@ export function OrderListItem({
             </div>}
             
             {customerPreference ? (
-              <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto flex items-center justify-center gap-1 flex-1 xmin-w-[100%] lg:min-w-[40vw]">
+              <div className="rounded-[24px] bg-[#FEF8E1] border border-[#FDE68A] px-2 py-1 text-[14px] leading-[29.44px] font-medium text-[#8E4E09] mx-auto md:mx-0 flex flex-row md:flex-col lg:flex-col items-center md:items-start lg:items-start justify-center md:justify-start gap-1 flex-1 min-w-[400px] md:min-w-0 lg:min-w-[300px]">
                 <span className="font-medium">Customer preference:</span> <span className="font-bold">{customerPreference}</span>
               </div>
             ) : null}

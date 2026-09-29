@@ -58,9 +58,23 @@ export default function OrderDetailsPage() {
     cancelled: [],
   };
 
+  // Third-party riders (Gokada, Chowdeck) own the Picked up / Delivered updates,
+  // so the business can only move these orders as far as Ready for pickup.
+  const THIRD_PARTY_DELIVERY_SERVICES = ["gokada", "chowdeck"];
+  const RIDER_MANAGED_STATUSES: OrderStatus[] = [OrderStatus.ONTRANSIT, OrderStatus.COMPLETED];
+  const deliveryService = String(order?.delivery_service ?? order?.deliveryService ?? "").trim().toLowerCase();
+  const isRiderManaged = THIRD_PARTY_DELIVERY_SERVICES.includes(deliveryService);
+
+  const getAllowedTransitions = (currentStatus: string): OrderStatus[] => {
+    const transitions = transitionMap[currentStatus] ?? [];
+    return isRiderManaged
+      ? transitions.filter((status) => !RIDER_MANAGED_STATUSES.includes(status))
+      : transitions;
+  };
+
   const canTransitionTo = (status: OrderStatus) => {
     const normalized = String(localStatus || order?.status || "pending").toLowerCase();
-    return transitionMap[normalized]?.includes(status) ?? false;
+    return getAllowedTransitions(normalized).includes(status);
   };
 
   const actionLabels: Record<OrderStatus, string> = {
@@ -74,8 +88,16 @@ export default function OrderDetailsPage() {
   };
 
   const normalizedCurrentStatus = String(localStatus || order?.status || "pending").toLowerCase() as OrderStatus;
-  const currentActionStatus = transitionMap[normalizedCurrentStatus]?.[0];
-  const mainActionLabel = currentActionStatus ? actionLabels[currentActionStatus] : "No action available";
+  // The main button never cancels; cancelling stays in More Actions.
+  const currentActionStatus = getAllowedTransitions(normalizedCurrentStatus).find(
+    (status) => status !== OrderStatus.CANCELLED,
+  );
+  const awaitingRider = isRiderManaged && ["ready", "on-transit"].includes(normalizedCurrentStatus);
+  const mainActionLabel = currentActionStatus
+    ? actionLabels[currentActionStatus]
+    : awaitingRider
+    ? `Awaiting ${String(order?.delivery_service ?? order?.deliveryService)} rider updates`
+    : "No action available";
 
   const updateLocalTimeline = (status: string) => {
     setLocalTimeline((previous) => {
@@ -230,6 +252,12 @@ export default function OrderDetailsPage() {
   const totalPrice = typeof order.totalPrice === "number" ? order.totalPrice : Number(order.totalPrice) || 0;
   const orderItems = Array.isArray(order.items) ? order.items : [];
   const itemCount = orderItems.length;
+  // Each item's special_instructions (normalized to customerPreference); prefix with the item name when there are several items.
+  const customerPreferences = orderItems
+    .filter((item: OrderItem) => String(item?.customerPreference ?? "").trim())
+    .map((item: OrderItem) =>
+      itemCount > 1 ? `${String(item.name)}: ${String(item.customerPreference)}` : String(item.customerPreference),
+    );
   const currentStatus = String(localStatus || order?.status || "pending").toLowerCase();
   const statusLabel = String(currentStatus || order.status || "processing")
     .replace(/(^|-)(\w)/g, (_, prefix, letter) => `${prefix || ""}${letter.toUpperCase()}`)
@@ -411,9 +439,13 @@ export default function OrderDetailsPage() {
               </div>
               <div className="flex flex-col ml-3">
                 <p className="text-[14.72px] leading-[30.95px] font-semibold text-[#8E4E09]">Customer preference</p>
-                {(order.address as Record<string, unknown>)?.notes ? (
-                  <p className="mt-1 text-sm text-slate-500">{String((order.address as Record<string, unknown>).notes)}</p>
-                ) : null}
+                {customerPreferences.length > 0 ? (
+                  customerPreferences.map((preference, index) => (
+                    <p key={index} className="mt-1 text-sm text-slate-500">{preference}</p>
+                  ))
+                ) : (
+                  <p className="mt-1 text-sm text-slate-500">No special instructions</p>
+                )}
               </div>
             </div>
 

@@ -178,6 +178,7 @@ export const menuAndOrdersApi = () => {
                     >(ENDPOINTS.FINE_DINING_MENU_ORDERS.GET_ALL_ORDERS);
                     return response.data;
                 },
+                refetchInterval: 20000,
             }),
         useMarkOrderAsPaid: () => {
             return useSafeMutation<
@@ -206,6 +207,7 @@ export const menuAndOrdersApi = () => {
                     >(ENDPOINTS.FINE_DINING_MENU_ORDERS.GET_KITCHEN_TICKETS(status));
                     return response.data;
                 },
+                refetchInterval: 20000,
             }),
         useUpdateKitchenTicketStatus: () => {
             return useSafeMutation<

@@ -5,21 +5,46 @@ import { useState } from 'react';
 import AddMenuModal from './AddMenuItem';
 import AddMenuCategoryModal from './AddMenuCategory';
 
+const tabs = [
+    { label: 'Menu', title: 'Menu Manager', route: "/menu" },
+    { label: 'Orders', title: 'Orders', route: "/menu/orders" },
+    { label: 'Waiters', title: 'Waiters', route: "/menu/waiters" },
+    { label: 'Kitchen', title: 'Kitchen', route: "/menu/kitchen" },
+    { label: 'Stock', title: 'Stock & Inventory', route: "/menu/stock" },
+]
 
-const Header = () => {
-
-    const pathname = usePathname();
-    const router = useRouter();
-
+export const MenuActions = () => {
     const [open, setOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
-    const titleData = [
-        { title: 'Menu Manager', route: "/menu" },
-        { title: 'Orders', route: "/menu/orders" },
-        { title: 'Kitchen', route: "/menu/kitchen" },
-        { title: 'Stock & Inventory', route: "/menu/stock" },
-    ]
+    return (
+        <div className="flex gap-3">
+            <button onClick={() => setIsCategoryModalOpen(true)} className="flex items-center gap-1 px-4 py-2 border border-orange-500 text-orange-600 rounded-[8px] text-sm font-semibold hover:bg-orange-50 transition-colors whitespace-nowrap">
+                <Plus size={16} />
+                Add Category
+            </button>
+            <button onClick={() => setOpen(true)} className="flex items-center gap-1 px-4 py-2 bg-orange-600 text-white rounded-[8px] text-sm font-semibold hover:bg-orange-700 transition-colors whitespace-nowrap">
+                <Plus size={16} />
+                Add Item
+            </button>
+
+            <AddMenuModal
+                isOpen={open}
+                onOpenChange={setOpen}
+            />
+
+            <AddMenuCategoryModal
+                isOpen={isCategoryModalOpen}
+                onClose={() => setIsCategoryModalOpen(false)}
+            />
+        </div>
+    )
+}
+
+const Header = ({ showActions = true }: { showActions?: boolean }) => {
+
+    const pathname = usePathname();
+    const router = useRouter();
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -32,74 +57,47 @@ const Header = () => {
                 : 'Evening service';
 
     return (
-        <div>
-            {/* Tab Switcher */}
-            <div className="hidden xl:flex bg-white border w-fit mb-4 rounded-lg overflow-hidden">
-                <button onClick={() => router.push('/menu')} className={`px-4 py-3 ${pathname === "/menu" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                    Menu
-                </button>
-                <button onClick={() => router.push('/menu/orders')} className={`px-4 py-3 ${pathname === "/menu/orders" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                    Orders
-                </button>
-                <button onClick={() => router.push('/menu/kitchen')} className={`px-4 py-3 ${pathname === "/menu/kitchen" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                    Kitchen
-                </button>
-                <button onClick={() => router.push('/menu/stock')} className={`px-4 py-3 ${pathname === "/menu/stock" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                    Stock
-                </button>
+        <div className="mb-6">
+            <div className="mb-5">
+                <h1 className="text-2xl font-bold text-gray-900">{tabs.find(x => x.route === pathname)?.title}</h1>
+                <p className="text-[#667185] text-sm font-medium">Manage your business operations effortlessly</p>
             </div>
-            <header className="flex flex-row sm:flex-col items-center md:items-start justify-between mb-8 gap-4">
-                <div>
-                    <h1 className="text-xl font-bold">{titleData.find(x => x.route === pathname)?.title}</h1>
-                    <p className="text-[#667185] text-sm">
-                        {now.toLocaleDateString('en-GB', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                        })}{" "}
-                        - {servicePeriod}
-                    </p>
+
+            <div className="flex items-end justify-between gap-4 lg:flex-col-reverse lg:items-start">
+                <nav className="flex border-b border-gray-200 overflow-x-auto max-w-full" style={{ scrollbarWidth: "none" }}>
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.route}
+                            onClick={() => router.push(tab.route)}
+                            className={`px-5 pb-2.5 pt-1 text-[15px] font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${pathname === tab.route
+                                ? "text-orange-600 border-orange-600"
+                                : "text-gray-500 border-transparent hover:text-gray-800"
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
+
+                <p className="text-[#667185] text-sm pb-2.5 lg:pb-0">
+                    {now.toLocaleDateString('en-GB', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                    })}
+                    {" • "}
+                    {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    {" • "}
+                    {servicePeriod}
+                </p>
+            </div>
+
+            {showActions && (
+                <div className="flex justify-end mt-5">
+                    <MenuActions />
                 </div>
-
-                {/* Tab Switcher */}
-                <div className="flex xl:hidden bg-white border rounded-lg overflow-hidden">
-                    <button onClick={() => router.push('/menu')} className={`px-4 py-3 ${pathname === "/menu" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                        Menu
-                    </button>
-                    <button onClick={() => router.push('/menu/orders')} className={`px-4 py-3 ${pathname === "/menu/orders" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                        Orders
-                    </button>
-                    <button onClick={() => router.push('/menu/kitchen')} className={`px-4 py-3 ${pathname === "/menu/kitchen" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                        Kitchen
-                    </button>
-                    <button onClick={() => router.push('/menu/stock')} className={`px-4 py-3 ${pathname === "/menu/stock" ? "bg-blue-50 text-[#667185]" : "hover:bg-gray-50"} text-xs border-r flex items-center gap-2`}>
-                        Stock
-                    </button>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                    <button onClick={() => setIsCategoryModalOpen(true)} className="flex items-center gap-2 px-4 py-2 border border-orange-500 text-orange-500 rounded-[8px] text-sm font-semibold hover:bg-orange-50 transition-colors">
-                        <Plus size={18} className="border border-orange-500 rounded-full p-0.5" />
-                        Add Category
-                    </button>
-                    <button onClick={() => setOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-[8px] text-sm font-semibold hover:bg-orange-700 transition-shadow">
-                        <Plus size={18} className="border-2 border-white rounded-full p-0.5" />
-                        Add Item
-                    </button>
-                </div>
-
-                <AddMenuModal
-                    isOpen={open}
-                    onOpenChange={setOpen}
-                />
-
-                <AddMenuCategoryModal
-                    isOpen={isCategoryModalOpen}
-                    onClose={() => setIsCategoryModalOpen(false)}
-                />
-            </header>
+            )}
         </div>
     )
 }

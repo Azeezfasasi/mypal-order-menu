@@ -75,7 +75,7 @@ const normalizeOrder = (rawOrder: unknown): Order => {
       name: String(nested?.name ?? item?.name ?? "Unknown item"),
       quantity: Number(item?.quantity ?? 1),
       price: typeof item?.amount === "number" ? (item.amount as number) : Number(item?.amount ?? nested?.price ?? 0),
-      customerPreference: String(item?.meal_preference ?? ""),
+      customerPreference: String(item?.special_instructions ?? "").trim(),
       optionLabel: String(item?.quantity_option_label ?? (nested?.quantityOptions as Record<string, unknown>[] | undefined)?.[0]?.label ?? ""),
       imageUrl: Array.isArray(nested?.image_urls) ? (nested.image_urls as (string | null)[])[0] : (nested?.background_image_url ?? null),
     };

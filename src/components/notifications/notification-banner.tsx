@@ -73,13 +73,13 @@ export function NotificationBanner() {
     setIsEnabling(true);
     try {
       console.log("Banner: Starting notification permission request...");
-      const token = await safeRequestNotificationPermission();
+      const result = await safeRequestNotificationPermission();
 
-      if (token) {
+      if (result.token) {
         console.log("Banner: Token received, registering with backend...");
         registerToken.mutate(
           {
-            token: token.token!,
+            token: result.token,
             platform: Platform.WEB,
             deviceInfo: navigator.userAgent,
           },

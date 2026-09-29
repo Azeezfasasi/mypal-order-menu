@@ -276,6 +276,8 @@ export default function OrdersPage() {
                 prepTime={order.prepTime || 0}
                 riderArrivalTime={order.riderArrivalTime || 0}
                 customerPreference={order.items?.[0]?.customerPreference ? String(order.items[0].customerPreference) : undefined}
+                orderMethod={String(order.order_method ?? (order.details as Record<string, unknown> | undefined)?.order_method ?? "") || undefined}
+                deliveryService={String((order.details as Record<string, unknown> | undefined)?.delivery_service ?? order.delivery_service ?? "") || undefined}
                 onClick={() => router.push(`/orders/${order.id}`)}
               />
             ))}

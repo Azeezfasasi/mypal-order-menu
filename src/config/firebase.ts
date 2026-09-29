@@ -532,6 +532,22 @@ export const safeRequestNotificationPermission = async (): Promise<{
     };
   }
 
+  // iOS (WebKit) only shows the permission prompt if Notification.requestPermission()
+  // is called while the tap's user activation is still live. The awaits below
+  // (dynamic import, IndexedDB probe inside isSupported()) consume it, so the
+  // prompt would silently never appear on iOS. Start the request synchronously.
+  if (
+    "Notification" in window &&
+    window.Notification &&
+    window.Notification.permission === "default"
+  ) {
+    try {
+      await window.Notification.requestPermission();
+    } catch (err) {
+      console.warn("Early Notification.requestPermission() failed:", err);
+    }
+  }
+
   // Prefer SDK async check first
   try {
     const sdkSupported = await isMessagingSupportedAsync();

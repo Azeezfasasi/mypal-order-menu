@@ -10,8 +10,15 @@ interface OrdersInProgressProps {
   searchQuery?: string;
 }
 
+const getOrderTime = (order: Order) => {
+  const time = new Date(String(order?.orderDate ?? order?.createdAt ?? "")).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
 export function OrdersInProgress({ orders, searchQuery = "" }: OrdersInProgressProps) {
   const hasSearchQuery = searchQuery.trim().length > 0;
+  // The active-orders API returns oldest first; show the newest orders in the top 5.
+  const latestOrders = [...(orders ?? [])].sort((a, b) => getOrderTime(b) - getOrderTime(a)).slice(0, 5);
 
   if (!orders || orders.length === 0) {
     return (
@@ -52,7 +59,7 @@ export function OrdersInProgress({ orders, searchQuery = "" }: OrdersInProgressP
       </div>
 
       <div className="space-y-3 grid grid-cols-2 md:grid-cols-1 gap-3 items-center justify-center">
-        {orders.slice(0, 5).map((order) => {
+        {latestOrders.map((order) => {
           const firstItem = order?.items?.[0];
           const normalizeDate = (value: unknown) => {
             if (value instanceof Date) return value.toISOString();
@@ -80,6 +87,8 @@ export function OrdersInProgress({ orders, searchQuery = "" }: OrdersInProgressP
                 prepTime={typeof order?.prepTime === "number" ? order.prepTime : 0}
                 riderArrivalTime={typeof order?.riderArrivalTime === "number" ? order.riderArrivalTime : 0}
                 customerPreference={firstItem?.customerPreference ? String(firstItem.customerPreference) : undefined}
+                orderMethod={order?.order_method ? String(order.order_method) : undefined}
+                deliveryService={order?.delivery_service ? String(order.delivery_service) : undefined}
               />
             </Link>
           );
