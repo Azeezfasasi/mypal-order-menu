@@ -38,6 +38,8 @@ export interface IFineDiningReservationPage {
         hasPrevious: boolean;
         hasNext: boolean;
     };
+    // Only some response shapes include per-status totals
+    statusCounts: Record<string, number> | null;
 }
 
 export interface IFineDiningReservationParams {
@@ -45,6 +47,7 @@ export interface IFineDiningReservationParams {
     limit: number;
     status?: string;
     search?: string;
+    enabled?: boolean;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -110,15 +113,17 @@ const normalizePage = (data: TRawRecord): IFineDiningReservationPage => {
             hasPrevious: Boolean(meta.hasPrevious),
             hasNext: Boolean(meta.hasNext),
         },
+        statusCounts: data?.statusCounts ?? null,
     };
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const FineDiningReservationsApi = {
     // Read-only: managers view reservations here, status changes stay with the backend
-    useGetReservations: (params: IFineDiningReservationParams) =>
+    useGetReservations: ({ enabled = true, ...params }: IFineDiningReservationParams) =>
         useQuery<IFineDiningReservationPage>({
             queryKey: ["fine-dining-reservations", params],
+            enabled,
             queryFn: async () => {
                 const response = await apiClient.get<BaseApiResponse<TRawRecord>>(
                     ENDPOINTS.BUSINESS.RESERVATIONS,

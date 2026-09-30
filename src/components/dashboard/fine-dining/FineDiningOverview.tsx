@@ -2,17 +2,28 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import {
-    AlertTriangle, ArrowRight, Banknote, ChefHat, CircleCheck, ClipboardList, Clock, Flame, LayoutGrid,
+    AlertTriangle, ArrowRight, Banknote, CalendarDays, ChefHat, CircleCheck, ClipboardList, Clock, Flame, LayoutGrid,
     Loader2, PackageX, Receipt, Timer, UsersRound, UtensilsCrossed, Wallet,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { MenuAndOrdersApi } from "@/services/api/fine-din-menu-orders-api";
+import { FineDiningReservationsApi } from "@/services/api/fine-dining-reservations-api";
+import { useAuthStore } from "@/stores/auth-store";
 import { OrdersTable, useTableBoard } from "@/components/menu/OrderShared";
+import {
+    RESERVATION_STATUS_STYLES,
+    formatTimeRange,
+    isReservationToday,
+    isUpcomingReservation,
+    parseReservationDate,
+    reservationSortKey,
+} from "@/components/menu/reservation-utils";
 import {
     TABLE_STATUS_STYLES,
     TARGET_PREP_MINUTES,
     TKitchenStatus,
     TTableStatus,
+    formatDuration,
     formatNaira,
     minutesSince,
     orderCode,
@@ -28,6 +39,21 @@ const PIPELINE: { status: TKitchenStatus; label: string; icon: typeof Flame; ton
     { status: "READY", label: "Ready to Serve", icon: CircleCheck, tone: "bg-green-50 text-green-600", bar: "bg-green-600" },
     { status: "SERVED", label: "Completed", icon: UtensilsCrossed, tone: "bg-slate-100 text-slate-600", bar: "bg-slate-400" },
 ];
+
+const RESERVATION_SAMPLE_SIZE = 100;
+
+const RESERVATION_BREAKDOWN = [
+    { status: "Pending", bar: "bg-orange-500", text: "text-orange-600" },
+    { status: "Booked", bar: "bg-green-600", text: "text-green-600" },
+    { status: "Cancelled", bar: "bg-red-500", text: "text-red-600" },
+];
+
+const dayBadge = (date: string) => {
+    const parsed = parseReservationDate(date);
+    return isNaN(parsed.getTime())
+        ? { day: "—", month: "" }
+        : { day: String(parsed.getDate()), month: parsed.toLocaleDateString("en-GB", { month: "short" }) };
+};
 
 const isToday = (date: string) => new Date(date).toDateString() === new Date().toDateString();
 
@@ -99,6 +125,42 @@ export default function FineDiningOverview() {
             .slice(0, 5),
         [menuResponse]);
 
+    const business = useAuthStore((state) => state.business);
+    const { data: reservationData, isLoading: isLoadingReservations } = FineDiningReservationsApi.useGetReservations({
+        page: 1,
+        limit: RESERVATION_SAMPLE_SIZE,
+    });
+
+    const reservationSummary = useMemo(() => {
+        const ownBusinessIds = new Set(
+            [business?.id, ...(business?.linkedBusinesses ?? []).map((linked) => linked.id)].filter(Boolean)
+        );
+        const reservations = (reservationData?.reservations ?? []).filter((reservation) =>
+            (!reservation.business?.id || ownBusinessIds.has(reservation.business.id))
+            && reservation.status !== "Blocked");
+
+        // Prefer the backend's per-status totals; otherwise count what was fetched
+        const counts = reservationData?.statusCounts;
+        const countFor = (status: string) =>
+            counts ? counts[status] ?? 0 : reservations.filter((reservation) => reservation.status === status).length;
+        const total = counts
+            ? Object.entries(counts).reduce((sum, [status, count]) => status === "Blocked" ? sum : sum + count, 0)
+            : reservations.length;
+        const upcoming = reservations
+            .filter(isUpcomingReservation)
+            .sort((a, b) => reservationSortKey(a) - reservationSortKey(b));
+
+        return {
+            total,
+            isPartial: !counts && Boolean(reservationData?.pagination.hasNext),
+            byStatus: RESERVATION_BREAKDOWN.map((entry) => ({ ...entry, count: countFor(entry.status) })),
+            today: upcoming.filter((reservation) => isReservationToday(reservation.date)),
+            upcoming,
+            upcomingGuests: upcoming.reduce((sum, reservation) => sum + reservation.total_individuals, 0),
+        };
+    }, [reservationData, business]);
+    const breakdownTotal = reservationSummary.byStatus.reduce((sum, entry) => sum + entry.count, 0);
+
     const delayedTickets = [...tickets.PENDING, ...tickets.PREPARING]
         .map((ticket) => ({ ticket, waited: minutesSince(ticket.items[0]?.createdAt ?? new Date()) }))
         .filter(({ waited }) => waited >= TARGET_PREP_MINUTES)
@@ -124,7 +186,7 @@ export default function FineDiningOverview() {
                     { href: "/menu/orders", label: "Place Order", icon: Receipt, primary: true },
                     { href: "/menu/kitchen", label: "Kitchen Board", icon: ChefHat },
                     { href: "/menu/waiters", label: "Floor & Waiters", icon: LayoutGrid },
-                    { href: "/table-management", label: "Reservations", icon: UsersRound },
+                    { href: "/menu/reservations", label: "Reservations", icon: UsersRound },
                 ].map((action) => (
                     <Link
                         key={action.href}
@@ -141,7 +203,7 @@ export default function FineDiningOverview() {
             </div>
 
             {/* KPI tiles */}
-            <div className="grid grid-cols-4 lg:grid-cols-2 sm:grid-cols-1 gap-4">
+            <div className="grid grid-cols-5 2xl:grid-cols-3 lg:grid-cols-2 sm:grid-cols-1 gap-4">
                 <KpiTile
                     icon={Banknote}
                     tone="bg-orange-50 text-orange-600"
@@ -170,6 +232,15 @@ export default function FineDiningOverview() {
                     value={`${occupancy}%`}
                     detail={`${inUse} of ${board.tables.length} tables in use`}
                     progress={occupancy}
+                />
+                <KpiTile
+                    icon={CalendarDays}
+                    tone="bg-sky-50 text-sky-600"
+                    label="Reservations"
+                    value={isLoadingReservations
+                        ? "—"
+                        : `${reservationSummary.total.toLocaleString()}${reservationSummary.isPartial ? "+" : ""}`}
+                    detail={`${reservationSummary.today.length} today · ${reservationSummary.upcoming.length} upcoming`}
                 />
             </div>
 
@@ -220,11 +291,88 @@ export default function FineDiningOverview() {
                                             {orderCode(ticket.order_id)} · {tableLabel(board.tables, ticket.table_id)}
                                         </p>
                                     </div>
-                                    <span className="text-xs font-bold text-red-600 whitespace-nowrap">{waited} min</span>
+                                    <span className="text-xs font-bold text-red-600 whitespace-nowrap">{formatDuration(waited)}</span>
                                 </li>
                             ))}
                         </ul>
                     )}
+                </Panel>
+            </div>
+
+            {/* Reservations */}
+            <div className="grid grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-1 gap-5">
+                <Panel title="Upcoming Reservations" subtitle={`${reservationSummary.upcomingGuests} guests expected`} href="/menu/reservations">
+                    {isLoadingReservations ? (
+                        <div className="flex items-center gap-2 text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            loading reservations . . .
+                        </div>
+                    ) : reservationSummary.upcoming.length === 0 ? (
+                        <EmptyNote icon={CalendarDays} text="No upcoming reservations." />
+                    ) : (
+                        <ul className="divide-y">
+                            {reservationSummary.upcoming.slice(0, 5).map((reservation) => (
+                                <li key={reservation.id} className="flex items-center gap-4 py-3 sm:gap-3">
+                                    <div className="w-12 shrink-0 text-center rounded-[8px] bg-sky-50 py-1.5">
+                                        <p className="text-[10px] font-bold uppercase text-sky-600">
+                                            {isReservationToday(reservation.date) ? "Today" : dayBadge(reservation.date).month}
+                                        </p>
+                                        <p className="text-base font-extrabold text-gray-900 leading-tight">
+                                            {dayBadge(reservation.date).day}
+                                        </p>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-gray-800 truncate">{reservation.guest.name}</p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {formatTimeRange(reservation)} · {reservation.total_individuals} guest{reservation.total_individuals === 1 ? "" : "s"}
+                                            {reservation.occasion ? ` · ${reservation.occasion}` : ""}
+                                        </p>
+                                    </div>
+                                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${RESERVATION_STATUS_STYLES[reservation.status ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
+                                        {reservation.status ?? "Unknown"}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Panel>
+
+                <Panel title="Reservation Status" subtitle="All fine dining bookings">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-[10px] bg-sky-50 p-3">
+                            <p className="text-2xl font-extrabold text-gray-900">{reservationSummary.today.length}</p>
+                            <p className="text-xs font-medium text-gray-500">Today</p>
+                        </div>
+                        <div className="rounded-[10px] bg-gray-50 p-3">
+                            <p className="text-2xl font-extrabold text-gray-900">{reservationSummary.upcoming.length}</p>
+                            <p className="text-xs font-medium text-gray-500">Upcoming</p>
+                        </div>
+                    </div>
+
+                    {breakdownTotal > 0 && (
+                        <div className="flex h-2 rounded-full overflow-hidden gap-[2px] bg-white mt-4">
+                            {reservationSummary.byStatus.filter((entry) => entry.count).map((entry) => (
+                                <div
+                                    key={entry.status}
+                                    title={`${entry.status}: ${entry.count}`}
+                                    className={entry.bar}
+                                    style={{ width: `${(entry.count / breakdownTotal) * 100}%` }}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    <ul className="mt-3 space-y-2">
+                        {reservationSummary.byStatus.map((entry) => (
+                            <li key={entry.status} className="flex items-center justify-between text-sm">
+                                <span className="flex items-center gap-2 text-gray-600">
+                                    <span className={`h-2 w-2 rounded-full ${entry.bar}`} />
+                                    {entry.status}
+                                </span>
+                                <span className={`font-bold ${entry.text}`}>{entry.count}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </Panel>
             </div>
 
