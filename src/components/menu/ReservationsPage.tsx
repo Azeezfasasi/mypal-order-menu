@@ -11,8 +11,15 @@ import {
     IFineDiningReservation,
 } from "@/services/api/fine-dining-reservations-api";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+    RESERVATION_STATUS_STYLES,
+    formatReservationDate,
+    formatTimeRange,
+    isReservationToday,
+} from "./reservation-utils";
 
 const PAGE_SIZE = 20;
+const SEARCH_SAMPLE_SIZE = 100;
 
 const STATUS_TABS = [
     { value: "", label: "All" },
@@ -22,13 +29,6 @@ const STATUS_TABS = [
     { value: "Blocked", label: "Blocked Slots" },
 ];
 
-const STATUS_STYLES: Record<string, string> = {
-    Pending: "bg-orange-50 text-orange-600",
-    Booked: "bg-green-50 text-green-600",
-    Cancelled: "bg-red-50 text-red-600",
-    Blocked: "bg-slate-100 text-slate-600",
-};
-
 const SOURCE_LABELS: Record<string, string> = {
     DASHBOARD: "Added by staff",
     APP: "MyPal app",
@@ -36,46 +36,14 @@ const SOURCE_LABELS: Record<string, string> = {
     THIRD_PARTY: "Third-party platform",
 };
 
-// The API mixes "DD-MM-YYYY" with ISO dates; parse date-only values as local days
-const parseReservationDate = (date: string) => {
-    const dayFirst = /^(\d{2})-(\d{2})-(\d{4})$/.exec(date);
-    if (dayFirst) return new Date(Number(dayFirst[3]), Number(dayFirst[2]) - 1, Number(dayFirst[1]));
-    const isoDay = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
-    if (isoDay) return new Date(Number(isoDay[1]), Number(isoDay[2]) - 1, Number(isoDay[3]));
-    return new Date(date);
-};
-
-const formatReservationDate = (date: string) => {
-    const parsed = parseReservationDate(date);
-    return !date || isNaN(parsed.getTime())
-        ? date || "—"
-        : parsed.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-};
-
-const formatReservationTime = (time: string | null) => {
-    if (!time) return null;
-    if (!time.includes("T")) return time;
-    const parsed = new Date(time);
-    return isNaN(parsed.getTime()) ? time : parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-};
-
-const formatTimeRange = (reservation: IFineDiningReservation) => {
-    const start = formatReservationTime(reservation.time);
-    const end = formatReservationTime(reservation.end_time);
-    if (!start) return "—";
-    return end && end !== start ? `${start} – ${end}` : start;
-};
-
 const formatDateTime = (date: string) =>
     new Date(date).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
-
-const isToday = (date: string) => parseReservationDate(date).toDateString() === new Date().toDateString();
 
 const orDash = (value: string | number | null | undefined) =>
     value === null || value === undefined || value === "" ? "—" : value;
 
 const StatusPill = ({ status }: { status?: string }) => (
-    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLES[status ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${RESERVATION_STATUS_STYLES[status ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
         {status ?? "Unknown"}
     </span>
 );
@@ -97,12 +65,24 @@ const ReservationsPage = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    const { data, isLoading, isFetching, isError } = FineDiningReservationsApi.useGetReservations({
-        page,
-        limit: PAGE_SIZE,
+    const isSearching = search.length > 0;
+
+    // The backend search only matches reservation IDs, so while searching we also
+    // pull the latest bookings and match guest details on the client
+    const listQuery = FineDiningReservationsApi.useGetReservations({
+        page: isSearching ? 1 : page,
+        limit: isSearching ? SEARCH_SAMPLE_SIZE : PAGE_SIZE,
+        status,
+    });
+    const idSearchQuery = FineDiningReservationsApi.useGetReservations({
+        page: 1,
+        limit: SEARCH_SAMPLE_SIZE,
         status,
         search,
+        enabled: isSearching,
     });
+    const { data, isLoading, isError } = listQuery;
+    const isFetching = listQuery.isFetching || (isSearching && idSearchQuery.isFetching);
     const { data: tablesResponse } = TableManagementApi.useGetAllTables();
 
     const ownBusinessIds = useMemo(
@@ -110,18 +90,39 @@ const ReservationsPage = () => {
         [business]
     );
 
-    // Keep only this business's bookings; "All" leaves out blocked slots
-    const reservations = useMemo(() =>
-        (data?.reservations ?? []).filter((reservation) =>
-            (!reservation.business?.id || ownBusinessIds.has(reservation.business.id))
-            && (status || reservation.status !== "Blocked")
-        ),
-        [data, ownBusinessIds, status]);
-
     const tableName = (tableId: string | null) =>
         tableId ? tablesResponse?.data?.find((table) => table.id === tableId)?.label ?? null : null;
 
-    const pagination = data?.pagination;
+    // Keep only this business's bookings; "All" leaves out blocked slots
+    const reservations = useMemo(() => {
+        const query = search.toLowerCase();
+        const matchesSearch = (reservation: IFineDiningReservation) =>
+            [
+                reservation.reservation_id,
+                reservation.guest.name,
+                reservation.guest.email,
+                reservation.guest.phone,
+                reservation.occasion,
+                reservation.experience,
+                tableName(reservation.table_id),
+            ].some((value) => value?.toLowerCase().includes(query));
+
+        const candidates = isSearching
+            ? [
+                ...(idSearchQuery.data?.reservations ?? []),
+                ...(data?.reservations ?? []).filter(matchesSearch),
+            ].filter((reservation, index, list) => list.findIndex((other) => other.id === reservation.id) === index)
+            : data?.reservations ?? [];
+
+        return candidates.filter((reservation) =>
+            (!reservation.business?.id || ownBusinessIds.has(reservation.business.id))
+            && (status || reservation.status !== "Blocked")
+        );
+        // tableName reads from tablesResponse
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data, idSearchQuery.data, isSearching, search, ownBusinessIds, status, tablesResponse]);
+
+    const pagination = isSearching ? undefined : data?.pagination;
     const selected = reservations.find((reservation) => reservation.id === selectedId) ?? null;
 
     return (
@@ -151,7 +152,7 @@ const ReservationsPage = () => {
                     <input
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Search guest or reservation ID..."
+                        placeholder="Search guest, phone, table or ID..."
                         className="h-9 w-[280px] md:w-full pl-9 pr-3 border border-gray-200 rounded-[8px] text-sm outline-none focus:border-orange-400"
                     />
                 </div>
@@ -162,7 +163,10 @@ const ReservationsPage = () => {
                     <div>
                         <h3 className="text-base font-bold text-gray-800">Fine Dining Reservations</h3>
                         <p className="text-xs text-gray-500">
-                            {pagination ? `${pagination.total} reservation${pagination.total === 1 ? "" : "s"} · ` : ""}view only
+                            {isSearching
+                                ? `${reservations.length} match${reservations.length === 1 ? "" : "es"} for "${search}" · `
+                                : pagination ? `${pagination.total} reservation${pagination.total === 1 ? "" : "s"} · ` : ""}
+                            view only
                         </p>
                     </div>
                     {isFetching && !isLoading && <Loader2 size={16} className="animate-spin text-gray-400" />}
@@ -207,7 +211,7 @@ const ReservationsPage = () => {
                                         <td className="py-3 pr-3 whitespace-nowrap">
                                             <p className="text-gray-800">
                                                 {formatReservationDate(reservation.date)}
-                                                {isToday(reservation.date) && (
+                                                {isReservationToday(reservation.date) && (
                                                     <span className="ml-2 text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">TODAY</span>
                                                 )}
                                             </p>

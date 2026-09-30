@@ -13,6 +13,7 @@ import { StatusBadge } from "./OrderShared";
 import {
     TABLE_STATUS_STYLES,
     TTableStatus,
+    formatDuration,
     formatNaira,
     formatTime,
     getItemsStatus,
@@ -90,7 +91,7 @@ const TableDetailsPanel = ({ table, status, orders, onClose }: ITableDetailsPane
                 </div>
                 <div className="flex flex-col items-center gap-1">
                     <Clock size={16} className="text-gray-500" />
-                    <p className="text-sm font-bold text-gray-800">{oldestOrder ? `${minutesSince(oldestOrder.createdAt)} mins` : "—"}</p>
+                    <p className="text-sm font-bold text-gray-800">{oldestOrder ? formatDuration(minutesSince(oldestOrder.createdAt)) : "—"}</p>
                     <p className="text-[10px] text-gray-400">Duration</p>
                 </div>
             </div>

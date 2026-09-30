@@ -39,7 +39,14 @@ export const formatTime = (date: string | Date) =>
 export const minutesSince = (date: string | Date) =>
     Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 60000));
 
-export const formatNaira = (amount: number | string) =>
+export const formatDuration = (minutes: number) => {
+    if (minutes < 60) return `${minutes} min`;
+    if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    const days = Math.floor(minutes / 1440);
+    return `${days} day${days === 1 ? "" : "s"}`;
+};
+
+export const formatNaira =(amount: number | string) =>
     `₦${Number(amount).toLocaleString()}`;
 
 export const formatDateParam = (date: Date) => {

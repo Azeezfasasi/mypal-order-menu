@@ -20,6 +20,7 @@ import {
     TARGET_PREP_MINUTES,
     TKitchenStatus,
     TOrderSource,
+    formatDuration,
     formatTime,
     getOrderSource,
     minutesSince,
@@ -240,9 +241,9 @@ function KitchenTicketCard({ ticket, status, next, tableName, isSelected, onSele
                 <div className="text-right shrink-0">
                     {createdAt && <p className="text-[11px] text-gray-400">{formatTime(createdAt)}</p>}
                     {status === "PENDING" && (
-                        <p className="text-[10px] font-bold text-orange-600">{elapsed < 10 ? "NEW" : `${elapsed} min`}</p>
+                        <p className="text-[10px] font-bold text-orange-600">{elapsed < 10 ? "NEW" : formatDuration(elapsed)}</p>
                     )}
-                    {status === "PREPARING" && <p className="text-[11px] font-bold text-orange-600">{elapsed} min</p>}
+                    {status === "PREPARING" && <p className="text-[11px] font-bold text-orange-600">{formatDuration(elapsed)}</p>}
                     {status === "READY" && <p className="text-[10px] font-bold text-green-600">READY</p>}
                     {status === "SERVED" && <Check size={14} className="text-green-600 ml-auto" />}
                 </div>

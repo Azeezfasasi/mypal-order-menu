@@ -191,7 +191,7 @@ export const OrderCard = ({ order }: { order: IOrdersResponse[number] }) => {
                     </DialogHeader>
 
                     <div className="space-y-2 py-3">
-                        {["CARD", "BANK_TRANSFER", "MOBILE_APP"].map((method) => (
+                        {["CARD", "BANK_TRANSFER"].map((method) => (
                             <button
                                 key={method}
                                 onClick={() => setPaymentMethod(method as TPaymentMethod)}
