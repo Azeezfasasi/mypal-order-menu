@@ -118,26 +118,65 @@ const normalizePage = (data: TRawRecord): IFineDiningReservationPage => {
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// The backend rejects page sizes above 100
+export const MAX_PAGE_SIZE = 100;
+
+const fetchReservationPage = async (params: Omit<IFineDiningReservationParams, "enabled">) => {
+    const response = await apiClient.get<BaseApiResponse<TRawRecord>>(
+        ENDPOINTS.BUSINESS.RESERVATIONS,
+        {
+            params: {
+                type: "finedining",
+                page: params.page,
+                limit: Math.min(params.limit, MAX_PAGE_SIZE),
+                ...(params.status ? { status: params.status } : {}),
+                ...(params.search ? { search: params.search } : {}),
+            },
+        }
+    );
+    return normalizePage(response.data.data);
+};
+
+export interface IFineDiningReservationBatchParams {
+    maxItems: number;
+    status?: string;
+    search?: string;
+    enabled?: boolean;
+}
+
 export const FineDiningReservationsApi = {
     // Read-only: managers view reservations here, status changes stay with the backend
     useGetReservations: ({ enabled = true, ...params }: IFineDiningReservationParams) =>
         useQuery<IFineDiningReservationPage>({
             queryKey: ["fine-dining-reservations", params],
             enabled,
+            queryFn: () => fetchReservationPage(params),
+            placeholderData: keepPreviousData,
+            refetchInterval: 30000,
+        }),
+
+    // Loads up to `maxItems` reservations by walking 100-item pages, so the page can
+    // sort and search across more than one backend page
+    useGetReservationBatch: ({ enabled = true, maxItems, ...params }: IFineDiningReservationBatchParams) =>
+        useQuery<IFineDiningReservationPage>({
+            queryKey: ["fine-dining-reservations", "batch", maxItems, params],
+            enabled,
             queryFn: async () => {
-                const response = await apiClient.get<BaseApiResponse<TRawRecord>>(
-                    ENDPOINTS.BUSINESS.RESERVATIONS,
-                    {
-                        params: {
-                            type: "finedining",
-                            page: params.page,
-                            limit: params.limit,
-                            ...(params.status ? { status: params.status } : {}),
-                            ...(params.search ? { search: params.search } : {}),
-                        },
-                    }
-                );
-                return normalizePage(response.data.data);
+                const pageCount = Math.ceil(maxItems / MAX_PAGE_SIZE);
+                const first = await fetchReservationPage({ ...params, page: 1, limit: MAX_PAGE_SIZE });
+                const reservations = [...first.reservations];
+                let last = first;
+
+                for (let page = 2; page <= pageCount && last.pagination.hasNext; page++) {
+                    last = await fetchReservationPage({ ...params, page, limit: MAX_PAGE_SIZE });
+                    reservations.push(...last.reservations);
+                }
+
+                return {
+                    reservations,
+                    pagination: { ...first.pagination, hasNext: last.pagination.hasNext },
+                    statusCounts: first.statusCounts,
+                };
             },
             placeholderData: keepPreviousData,
             refetchInterval: 30000,

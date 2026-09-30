@@ -57,12 +57,24 @@ export const reservationSortKey = (reservation: IFineDiningReservation) =>
     parseReservationDate(reservation.date).getTime() + reservationMinutes(reservation.time) * 60000;
 
 // Midnight-based comparison so today's bookings count as upcoming all day
-export const isUpcomingReservation = (reservation: IFineDiningReservation) => {
+const isTodayOrLater = (reservation: IFineDiningReservation) => {
     const day = parseReservationDate(reservation.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return !isNaN(day.getTime())
-        && day >= today
-        && reservation.status !== "Cancelled"
-        && reservation.status !== "Blocked";
+    return !isNaN(day.getTime()) && day >= today;
 };
+
+export const isUpcomingReservation = (reservation: IFineDiningReservation) =>
+    isTodayOrLater(reservation)
+    && reservation.status !== "Cancelled"
+    && reservation.status !== "Blocked";
+
+// Upcoming bookings soonest first, then past bookings most recent first
+export const splitByBookingDate = (reservations: IFineDiningReservation[]) => ({
+    upcoming: reservations
+        .filter(isTodayOrLater)
+        .sort((a, b) => reservationSortKey(a) - reservationSortKey(b)),
+    past: reservations
+        .filter((reservation) => !isTodayOrLater(reservation))
+        .sort((a, b) => reservationSortKey(b) - reservationSortKey(a)),
+});

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
     CalendarDays, ChevronLeft, ChevronRight, Clock, Eye, Loader2, Mail, Phone, Search, Users,
 } from "lucide-react";
@@ -9,6 +9,7 @@ import { TableManagementApi } from "@/services/api/table-management-api";
 import {
     FineDiningReservationsApi,
     IFineDiningReservation,
+    MAX_PAGE_SIZE,
 } from "@/services/api/fine-dining-reservations-api";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -16,10 +17,12 @@ import {
     formatReservationDate,
     formatTimeRange,
     isReservationToday,
+    splitByBookingDate,
 } from "./reservation-utils";
 
 const PAGE_SIZE = 20;
-const SEARCH_SAMPLE_SIZE = 100;
+// The API pages by creation date, so we load a larger batch and order it by booking date here
+const SAMPLE_SIZE = 300;
 
 const STATUS_TABS = [
     { value: "", label: "All" },
@@ -67,16 +70,15 @@ const ReservationsPage = () => {
 
     const isSearching = search.length > 0;
 
-    // The backend search only matches reservation IDs, so while searching we also
-    // pull the latest bookings and match guest details on the client
-    const listQuery = FineDiningReservationsApi.useGetReservations({
-        page: isSearching ? 1 : page,
-        limit: isSearching ? SEARCH_SAMPLE_SIZE : PAGE_SIZE,
+    // The backend search only matches reservation IDs, so guest details are
+    // matched on the client against the loaded batch
+    const listQuery = FineDiningReservationsApi.useGetReservationBatch({
+        maxItems: SAMPLE_SIZE,
         status,
     });
     const idSearchQuery = FineDiningReservationsApi.useGetReservations({
         page: 1,
-        limit: SEARCH_SAMPLE_SIZE,
+        limit: MAX_PAGE_SIZE,
         status,
         search,
         enabled: isSearching,
@@ -122,7 +124,14 @@ const ReservationsPage = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data, idSearchQuery.data, isSearching, search, ownBusinessIds, status, tablesResponse]);
 
-    const pagination = isSearching ? undefined : data?.pagination;
+    const { upcoming, past } = useMemo(() => splitByBookingDate(reservations), [reservations]);
+    const sorted = useMemo(() => [...upcoming, ...past], [upcoming, past]);
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const pageStart = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = sorted.slice(pageStart, pageStart + PAGE_SIZE);
+    const isTruncated = Boolean(data?.pagination.hasNext);
+
     const selected = reservations.find((reservation) => reservation.id === selectedId) ?? null;
 
     return (
@@ -164,9 +173,10 @@ const ReservationsPage = () => {
                         <h3 className="text-base font-bold text-gray-800">Fine Dining Reservations</h3>
                         <p className="text-xs text-gray-500">
                             {isSearching
-                                ? `${reservations.length} match${reservations.length === 1 ? "" : "es"} for "${search}" · `
-                                : pagination ? `${pagination.total} reservation${pagination.total === 1 ? "" : "s"} · ` : ""}
-                            view only
+                                ? `${sorted.length} match${sorted.length === 1 ? "" : "es"} for "${search}"`
+                                : `${sorted.length} reservation${sorted.length === 1 ? "" : "s"}`}
+                            {` · ${upcoming.length} upcoming · sorted by date · view only`}
+                            {isTruncated && ` · showing the latest ${SAMPLE_SIZE} bookings`}
                         </p>
                     </div>
                     {isFetching && !isLoading && <Loader2 size={16} className="animate-spin text-gray-400" />}
@@ -179,7 +189,7 @@ const ReservationsPage = () => {
                     </div>
                 ) : isError ? (
                     <p className="text-sm text-red-600 py-6">Could not load reservations. Please try again.</p>
-                ) : reservations.length === 0 ? (
+                ) : sorted.length === 0 ? (
                     <p className="text-sm text-gray-500 py-6">No reservations found.</p>
                 ) : (
                     <div className="overflow-x-auto">
@@ -197,11 +207,30 @@ const ReservationsPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {reservations.map((reservation) => (
+                                {pageRows.map((reservation, index) => {
+                                    const position = pageStart + index;
+                                    const isPast = position >= upcoming.length;
+                                    // Section heading where upcoming or past bookings start on this page
+                                    const heading = position === 0 && upcoming.length
+                                        ? `Upcoming (${upcoming.length})`
+                                        : position === upcoming.length
+                                            ? `Past (${past.length})`
+                                            : index === 0
+                                                ? `${isPast ? "Past" : "Upcoming"} (continued)`
+                                                : null;
+
+                                    return (
+                                    <Fragment key={reservation.id}>
+                                    {heading && (
+                                        <tr className="bg-gray-50">
+                                            <td colSpan={8} className="py-2 px-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                                                {heading}
+                                            </td>
+                                        </tr>
+                                    )}
                                     <tr
-                                        key={reservation.id}
                                         onClick={() => setSelectedId(reservation.id)}
-                                        className="border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
+                                        className={`border-b last:border-b-0 cursor-pointer hover:bg-gray-50 ${isPast ? "opacity-70" : ""}`}
                                     >
                                         <td className="py-3 pr-3 font-semibold text-gray-800 whitespace-nowrap">{reservation.reservation_id}</td>
                                         <td className="py-3 pr-3">
@@ -227,26 +256,28 @@ const ReservationsPage = () => {
                                             </span>
                                         </td>
                                     </tr>
-                                ))}
+                                    </Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
 
-                {pagination && pagination.totalPages > 1 && (
+                {totalPages > 1 && (
                     <div className="flex items-center justify-between pt-4 mt-2 border-t text-xs text-gray-500">
-                        <span>Page {pagination.page} of {pagination.totalPages}</span>
+                        <span>Page {currentPage} of {totalPages}</span>
                         <div className="flex gap-2">
                             <button
-                                onClick={() => setPage((p) => p - 1)}
-                                disabled={!pagination.hasPrevious || isFetching}
+                                onClick={() => setPage(currentPage - 1)}
+                                disabled={currentPage <= 1}
                                 className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-[6px] hover:bg-gray-50 disabled:opacity-50"
                             >
                                 <ChevronLeft size={14} /> Previous
                             </button>
                             <button
-                                onClick={() => setPage((p) => p + 1)}
-                                disabled={!pagination.hasNext || isFetching}
+                                onClick={() => setPage(currentPage + 1)}
+                                disabled={currentPage >= totalPages}
                                 className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-[6px] hover:bg-gray-50 disabled:opacity-50"
                             >
                                 Next <ChevronRight size={14} />
