@@ -10,6 +10,7 @@ const tabs = [
     { label: 'Orders', title: 'Orders', route: "/menu/orders" },
     { label: 'Waiters', title: 'Waiters', route: "/menu/waiters" },
     { label: 'Kitchen', title: 'Kitchen', route: "/menu/kitchen" },
+    { label: 'Reservations', title: 'Reservations', route: "/menu/reservations" },
     { label: 'Stock', title: 'Stock & Inventory', route: "/menu/stock" },
 ]
 
