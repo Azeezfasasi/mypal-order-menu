@@ -21,10 +21,10 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "MyPal Order Menu",
+  title: "MyPal Ops App",
   description: "Admin dashboard for MyPal Business platform",
   manifest: "/manifest.json",
-  applicationName: "MyPal Order Menu",
+  applicationName: "MyPal Ops App",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
