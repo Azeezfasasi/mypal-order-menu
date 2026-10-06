@@ -144,7 +144,7 @@ export default function InstallPrompt() {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">
-                Install MyPal Order Menu now
+                Install MyPal Ops App now
               </h3>
               <p className="text-sm text-gray-600">
                 Add to your home screen for quick access
@@ -196,7 +196,7 @@ export default function InstallPrompt() {
             <Download className="w-5 h-5 text-orange-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Install MyPal Order Menu</h3>
+            <h3 className="font-semibold text-gray-900">Install MyPal Ops App</h3>
             <p className="text-sm text-gray-600">
               Get quick access from your home screen
             </p>
