@@ -306,7 +306,7 @@ export default function LoginForm() {
 
       <div>
         <h2 className="text-2xl font-bold">Log in</h2>
-        <p className="text-sm text-gray-600">MyPal Order Menu Management</p>
+        <p className="text-sm text-gray-600">MyPal Ops App Management</p>
         <p className="mt-2 text-sm text-gray-500">
           Welcome back, please enter the details correctly to sign in.
         </p>
