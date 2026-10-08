@@ -430,10 +430,13 @@ export default function MenuManagementPage() {
                         <p className="text-sm font-bold text-[#DB3A07] mt-1">
                           {item.quantityOptions && item.quantityOptions.length > 0
                             ? (() => {
-                                const prices = item.quantityOptions.map(opt => opt.price);
+                                const prices = item.quantityOptions.map(opt => Number(opt.price));
                                 const minPrice = Math.min(...prices);
                                 const maxPrice = Math.max(...prices);
-                                return `₦${Number(minPrice).toLocaleString()} - ₦${Number(maxPrice).toLocaleString()}`;
+                                // One option (or all the same price) shows a single price, not "₦X - ₦X"
+                                return minPrice === maxPrice
+                                  ? `₦${minPrice.toLocaleString()}`
+                                  : `₦${minPrice.toLocaleString()} - ₦${maxPrice.toLocaleString()}`;
                               })()
                             : `₦${Number(item.price).toLocaleString()}`
                           }
