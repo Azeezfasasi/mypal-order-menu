@@ -68,7 +68,8 @@ export default function EditMenuItemModal({
     dish: '',
     servingFormat: '',
     preparationTime: '',
-    quantityOptions: [] as Array<{ label: string; price: number }>,
+    // Price is kept as typed text while editing so the field can be cleared and retyped
+    quantityOptions: [] as Array<{ label: string; price: number | string }>,
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -140,6 +141,15 @@ export default function EditMenuItemModal({
     });
   };
 
+  const updateQuantityOption = (index: number, field: 'label' | 'price', value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      quantityOptions: prev.quantityOptions.map((option, i) =>
+        i === index ? { ...option, [field]: value } : option
+      ),
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -153,6 +163,19 @@ export default function EditMenuItemModal({
       return;
     }
 
+    // Options may have been edited inline — check them and convert prices back to numbers
+    const quantityOptions = formData.quantityOptions.map((option) => ({
+      label: option.label.trim(),
+      price: typeof option.price === 'number' ? option.price : parseFloat(option.price),
+    }));
+    const invalidIndex = quantityOptions.findIndex(
+      (option) => !option.label || isNaN(option.price) || option.price < 0
+    );
+    if (invalidIndex !== -1) {
+      alert(`Quantity option ${invalidIndex + 1} needs a name and a valid price.`);
+      return;
+    }
+
     onSubmit({
       id: item?.id,
       name: formData.name,
@@ -163,7 +186,7 @@ export default function EditMenuItemModal({
       dish: formData.dish,
       servingFormat: formData.servingFormat,
       preparationTime: formData.preparationTime,
-      quantityOptions: formData.quantityOptions,
+      quantityOptions,
     });
 
     // Reset form
@@ -272,19 +295,38 @@ export default function EditMenuItemModal({
                 <div className='space-y-2 mb-3'>
                   {formData.quantityOptions.map((option, index) => (
                     <div key={index} className='flex gap-2 items-center bg-white p-2 rounded border border-gray-200'>
-                      <div className='flex-1'>
-                        <p className='text-sm font-medium text-gray-700'>{option.label}</p>
+                      <Input
+                        type='text'
+                        value={option.label}
+                        onChange={(e) => updateQuantityOption(index, 'label', e.target.value)}
+                        placeholder='Size name'
+                        aria-label={`Option ${index + 1} name`}
+                        disabled={isSubmitting}
+                        className='flex-1 min-w-0'
+                      />
+                      <div className='relative w-32 shrink-0'>
+                        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500'>₦</span>
+                        <Input
+                          type='number'
+                          value={option.price}
+                          onChange={(e) => updateQuantityOption(index, 'price', e.target.value)}
+                          placeholder='0'
+                          min='0'
+                          step='0.01'
+                          aria-label={`Option ${index + 1} price`}
+                          disabled={isSubmitting}
+                          className='pl-7'
+                        />
                       </div>
-                      <div className='flex items-center gap-2'>
-                        <p className='text-sm text-gray-600'>₦{Number(option.price).toLocaleString()}</p>
-                        <button
-                          type='button'
-                          onClick={() => removeQuantityOption(index)}
-                          className='text-red-500 hover:text-red-700 p-1'
-                        >
-                          <X className='w-4 h-4' />
-                        </button>
-                      </div>
+                      <button
+                        type='button'
+                        onClick={() => removeQuantityOption(index)}
+                        disabled={isSubmitting}
+                        className='text-red-500 hover:text-red-700 p-1 shrink-0'
+                        aria-label={`Remove option ${index + 1}`}
+                      >
+                        <X className='w-4 h-4' />
+                      </button>
                     </div>
                   ))}
                 </div>
