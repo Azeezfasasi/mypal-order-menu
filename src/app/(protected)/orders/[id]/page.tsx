@@ -9,6 +9,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Camera, AlertCircle, Loader, MoreHorizontal, Upload, FileText, SendHorizontal, CircleX, MapPin } from "lucide-react";
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
+import { OrderItemAddonList } from "@/components/order-item-addon-list";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -724,6 +725,7 @@ export default function OrderDetailsPage() {
                       {String(item?.customerPreference || "") ? (
                         <p className="mt-2 text-xs text-slate-500">Preference: {String(item.customerPreference)}</p>
                       ) : null}
+                      <OrderItemAddonList addons={item.addons} className="mt-2" />
                     </div>
                   </div>
                   <div className="text-right">
