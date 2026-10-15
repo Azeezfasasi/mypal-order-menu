@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { OrderStatus } from "@/types/enums";
 import ordersApi, { OrderFilter, OrderStats, Order } from "@/services/api/orders";
+import { normalizeOrderItemAddons } from "@/lib/order-addons";
 
 const unwrapData = (value: unknown): unknown => {
   if (value == null) return value;
@@ -78,6 +79,7 @@ const normalizeOrder = (rawOrder: unknown): Order => {
       customerPreference: String(item?.special_instructions ?? "").trim(),
       optionLabel: String(item?.quantity_option_label ?? (nested?.quantityOptions as Record<string, unknown>[] | undefined)?.[0]?.label ?? ""),
       imageUrl: Array.isArray(nested?.image_urls) ? (nested.image_urls as (string | null)[])[0] : (nested?.background_image_url ?? null),
+      addons: normalizeOrderItemAddons(item?.addons ?? item?.selected_addons),
     };
   });
 

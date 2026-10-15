@@ -25,6 +25,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useAuthStore } from "@/stores/auth-store";
 import { BusinessCategoryType } from "@/types/enums";
+import { normalizeOrderItemAddons } from "@/lib/order-addons";
+import { OrderItemAddonList } from "@/components/order-item-addon-list";
 
 interface OrderDetailModalProps {
     open: boolean;
@@ -194,6 +196,7 @@ type OrderItem = GetBusinessOrderResponse['data']['orderitems'][number];
 function OrderItemRow({ orderItem }: { orderItem: OrderItem }) {
 
     const { item, quantity, amount, quantity_option_label, quantity_option_price } = orderItem;
+    const addons = normalizeOrderItemAddons(orderItem.addons);
 
     const quantityOptionPriceNumber = Number(quantity_option_price);
     const quantityOptionPrice = isNaN(quantityOptionPriceNumber) ? 0 : quantityOptionPriceNumber;
@@ -237,6 +240,7 @@ function OrderItemRow({ orderItem }: { orderItem: OrderItem }) {
                         <span className="text-xs text-slate-600">· {quantity_option_label}</span>
                     )}
                 </div>
+                <OrderItemAddonList addons={addons} className="mt-1" />
             </div>
 
             {/* Quantity & line total */}

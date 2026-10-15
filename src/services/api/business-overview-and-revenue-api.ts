@@ -113,6 +113,8 @@ export interface GetBusinessOrderResponse {
       amount: number;
       quantity_option_label: string | null;
       quantity_option_price: string;
+      /** Add-ons picked on mobile; shape varies, read via normalizeOrderItemAddons */
+      addons?: unknown[];
       item: {
         id: string;
         name: string;

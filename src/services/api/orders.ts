@@ -1,6 +1,7 @@
 import { apiClient } from "@/services/api/api-client";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { OrderStatus } from "@/types/enums";
+import type { OrderItemAddon } from "@/lib/order-addons";
 
 export interface OrderFilter {
   status?: string;
@@ -28,6 +29,8 @@ export interface OrderStats {
 
 export interface OrderItem {
   name: string;
+  /** Add-ons picked for this item (empty when none) */
+  addons?: OrderItemAddon[];
   [key: string]: unknown;
 }
 
