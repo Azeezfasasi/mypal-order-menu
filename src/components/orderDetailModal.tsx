@@ -27,6 +27,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { BusinessCategoryType } from "@/types/enums";
 import { normalizeOrderItemAddons } from "@/lib/order-addons";
 import { OrderItemAddonList } from "@/components/order-item-addon-list";
+import { OrderPriceBreakdown } from "@/components/order-price-breakdown";
 
 interface OrderDetailModalProps {
     open: boolean;
@@ -169,15 +170,11 @@ export default function OrderDetailModal({ open, onOpenChange, orderDetails }: O
                             ))}
                         </div>
 
-                        {/* Items subtotal */}
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                            <span className="text-sm font-medium text-slate-500">Subtotal</span>
-                            <span className="text-sm font-bold text-slate-900">
-                                ₦{orderDetails.orderitems
-                                    .reduce((sum, item) => sum + item.amount, 0)
-                                    .toLocaleString()}
-                            </span>
-                        </div>
+                        <OrderPriceBreakdown
+                            itemsSubtotal={orderDetails.orderitems.reduce((sum, item) => sum + Number(item.amount || 0), 0)}
+                            deliveryFee={Number(orderDetails.delivery?.delivery_price ?? 0) || 0}
+                            total={Number(orderDetails.amount ?? 0)}
+                        />
                     </div>
                 )}
 
@@ -197,6 +194,8 @@ function OrderItemRow({ orderItem }: { orderItem: OrderItem }) {
 
     const { item, quantity, amount, quantity_option_label, quantity_option_price } = orderItem;
     const addons = normalizeOrderItemAddons(orderItem.addons);
+    // The line amount includes add-ons; show the item's own share so item + add-on lines add up
+    const itemOwnAmount = Math.max(0, Number(amount || 0) - addons.reduce((sum, addon) => sum + addon.total, 0));
 
     const quantityOptionPriceNumber = Number(quantity_option_price);
     const quantityOptionPrice = isNaN(quantityOptionPriceNumber) ? 0 : quantityOptionPriceNumber;
@@ -245,7 +244,7 @@ function OrderItemRow({ orderItem }: { orderItem: OrderItem }) {
 
             {/* Quantity & line total */}
             <div className="flex flex-col items-end flex-shrink-0">
-                <span className="text-sm font-bold text-slate-900">₦{amount.toLocaleString()}</span>
+                <span className="text-sm font-bold text-slate-900">₦{itemOwnAmount.toLocaleString()}</span>
                 <span className="text-xs text-slate-600 mt-0.5">
                     x{quantity}
                 </span>
