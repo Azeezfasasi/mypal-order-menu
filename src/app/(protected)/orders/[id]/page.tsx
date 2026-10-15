@@ -10,6 +10,7 @@ import { ChevronLeft, Camera, AlertCircle, Loader, MoreHorizontal, Upload, FileT
 import { uploadSingleFile } from "@/services/api/upload-utils";
 import { Button } from "@/components/ui/button";
 import { OrderItemAddonList } from "@/components/order-item-addon-list";
+import { OrderPriceBreakdown } from "@/components/order-price-breakdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -729,11 +730,20 @@ export default function OrderDetailsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-900">₦{Number(item?.price || 0).toLocaleString()}</p>
+                    {/* The line amount includes add-ons, which are listed separately */}
+                    <p className="text-sm font-semibold text-slate-900">
+                      ₦{Math.max(0, Number(item?.price || 0) - (item.addons ?? []).reduce((sum, addon) => sum + addon.total, 0)).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
+            <OrderPriceBreakdown
+              itemsSubtotal={orderItems.reduce((sum: number, item: OrderItem) => sum + (Number(item?.price) || 0), 0)}
+              deliveryFee={Number((order.delivery as Record<string, unknown> | undefined)?.delivery_price ?? 0) || 0}
+              total={totalPrice}
+              className="mt-4"
+            />
           </div>
 
           {/* Meal Verification section */}
