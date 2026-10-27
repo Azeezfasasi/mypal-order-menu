@@ -7,10 +7,20 @@ import { useAuthStore } from "@/stores/auth-store";
 import BusinessAccountSwitcher from '@/components/dashboard/BusinessAccountSwitcher';
 import ShortletRoomManagement from '@/components/room-management/ShortletRoomManagement';
 import FineDiningOverview from '@/components/dashboard/fine-dining/FineDiningOverview';
+import MobilityFleetPage from "@/components/mobility/MobilityFleetPage";
+import { isMobilityBusiness } from "@/types/mobility-types";
 
 // Every business category this dashboard currently knows how to route to.
 // Shown to the user when their account matches none of them.
-const SUPPORTED_CATEGORIES = ["Hotel Experience", "Iconic Delicacies", "Short-let homes", "Fine Dining"];
+const SUPPORTED_CATEGORIES = [
+  "Hotel Experience",
+  "Iconic Delicacies",
+  "Short-let homes",
+  "Fine Dining",
+  "In-City Rides",
+  "Luxury on Demand",
+  "Household Logistics",
+];
 
 export default function DashboardPage() {
   const business = useAuthStore((state) => state.business);
@@ -38,10 +48,11 @@ export default function DashboardPage() {
     categoryName.includes("fine dining") ||
     categoryType.includes("fine dining") ||
     categoryType.includes("finedining");
+  const isMobility = isMobilityBusiness(business?.category?.business_type);
   const canAccessOrders = isIconicDelicacy || isMainstream;
 
   // No known section matches this account's category at all
-  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining;
+  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining && !isMobility;
 
   return (
     <>
@@ -102,6 +113,8 @@ export default function DashboardPage() {
       {isFineDining &&
         <FineDiningOverview />
       }
+
+      {isMobility && <MobilityFleetPage />}
     </>
   )
 }
