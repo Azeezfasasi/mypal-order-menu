@@ -324,3 +324,19 @@ export const DELIVERY_QUERY_KEYS = {
   analyticsList: () => [...DELIVERY_QUERY_KEYS.analytics(), "list"] as const,
   statsList: () => [...DELIVERY_QUERY_KEYS.analytics(), "stats"] as const,
 } as const;
+
+export const MOBILITY_QUERY_KEYS = {
+  all: ["mobility"] as const,
+  categories: () => [...MOBILITY_QUERY_KEYS.all, "categories"] as const,
+  stats: (params?: Record<string, unknown>) =>
+    [...MOBILITY_QUERY_KEYS.all, "stats", { params }] as const,
+  inventory: (params?: Record<string, unknown>) =>
+    [...MOBILITY_QUERY_KEYS.all, "inventory", { params }] as const,
+  vehicles: (params?: Record<string, unknown>) =>
+    [...MOBILITY_QUERY_KEYS.all, "vehicles", { params }] as const,
+  bookings: (params?: Record<string, unknown>) =>
+    [...MOBILITY_QUERY_KEYS.all, "bookings", { params }] as const,
+  booking: (id: string) => [...MOBILITY_QUERY_KEYS.all, "booking", id] as const,
+  drivers: (params?: Record<string, unknown>) =>
+    [...MOBILITY_QUERY_KEYS.all, "drivers", { params }] as const,
+} as const;

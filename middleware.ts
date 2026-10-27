@@ -12,6 +12,9 @@ export function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    // Sentry's tunnelRoute (next.config). Redirecting it to /login dropped every
+    // client error report in production.
+    pathname.startsWith("/monitoring") ||
     pathname.startsWith("/static") ||
     PUBLIC_FILE.test(pathname) ||
     pathname === "/favicon.ico" ||
@@ -152,10 +155,11 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
+     * - monitoring (Sentry tunnel route)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*$).*)",
+    "/((?!api|monitoring|_next/static|_next/image|favicon.ico|.*\\..*$).*)",
   ],
 };
