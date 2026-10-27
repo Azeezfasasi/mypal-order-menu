@@ -5,13 +5,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { BusinessCategoryType } from "@/types/enums";
+import { isMobilityBusiness } from "@/types/mobility-types";
 import {
+  CalendarCheck,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
   LayoutDashboard,
   ShoppingCart,
   Settings,
+  Users,
   UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
@@ -86,6 +89,21 @@ export default function DashboardSidebar({
             href: "/table-management",
             icon: UtensilsCrossed,
           }
+        ]
+      : []
+    ),
+    ...(isMobilityBusiness(selectedBusinessType)
+      ? [
+          {
+            title: "Bookings",
+            href: "/mobility/bookings",
+            icon: CalendarCheck,
+          },
+          {
+            title: "Chauffeurs",
+            href: "/mobility/chauffeurs",
+            icon: Users,
+          },
         ]
       : []
     ),

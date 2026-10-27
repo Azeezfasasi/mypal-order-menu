@@ -641,6 +641,22 @@ export const ENDPOINTS = {
     LIST: "/promotions/business",
   },
 
+  // MOBILITY (In-City Rides, Luxury on Demand, Household Logistics)
+  MOBILITY: {
+    CATEGORIES: "/mobility/categories",
+    STATS: "/mobility/dashboard/stats",
+    INVENTORY: "/mobility/dashboard/inventory",
+    VEHICLES: "/mobility/dashboard/vehicles",
+    VEHICLE: (id: string) => `/mobility/dashboard/vehicles/${id}`,
+    VEHICLE_AVAILABILITY: (id: string) => `/mobility/dashboard/vehicles/${id}/availability`,
+    BOOKINGS: "/mobility/dashboard/bookings",
+    BOOKING: (id: string) => `/mobility/dashboard/bookings/${id}`,
+    BOOKING_STATUS: (id: string) => `/mobility/dashboard/bookings/${id}/status`,
+    BOOKING_ASSIGN_DRIVER: (id: string) => `/mobility/dashboard/bookings/${id}/assign-driver`,
+    CALCULATE_FARE: "/mobility/dashboard/calculate-fare",
+    DRIVERS: "/mobility/dashboard/drivers",
+  },
+
   // BUFFET OFFERINGS ENDPOINTS
   BUFFET_OFFERINGS: {
     CREATE: "/buffet-offerings",
