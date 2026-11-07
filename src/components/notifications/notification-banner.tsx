@@ -11,6 +11,7 @@ import { useRegisterDeviceToken } from "@/examples/notification-api-usage";
 import { Platform } from "@/types/enums";
 import { Bell, Clock, TrendingUp, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { describeDevice } from "@/lib/push-notifications";
 
 export function NotificationBanner() {
   const [isVisible, setIsVisible] = useState(false);
@@ -81,7 +82,7 @@ export function NotificationBanner() {
           {
             token: result.token,
             platform: Platform.WEB,
-            deviceInfo: navigator.userAgent,
+            deviceInfo: describeDevice(),
           },
           {
             onSuccess: () => {

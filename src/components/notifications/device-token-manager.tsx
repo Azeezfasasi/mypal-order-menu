@@ -26,6 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { describeDevice } from "@/lib/push-notifications";
 
 const STORAGE_KEY = "fcm_device_token";
 const REGISTERED_TOKEN_KEY = "fcm_token_registered";
@@ -178,7 +179,7 @@ export function DeviceTokenManager() {
       {
         token,
         platform: Platform.WEB,
-        deviceInfo: navigator.userAgent,
+        deviceInfo: describeDevice(),
       },
       {
         onSettled: () => {
@@ -293,7 +294,7 @@ export function DeviceTokenManager() {
           {
             token,
             platform: Platform.WEB,
-            deviceInfo: navigator.userAgent,
+            deviceInfo: describeDevice(),
           },
           {
             onSuccess: () => {

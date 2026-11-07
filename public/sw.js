@@ -334,94 +334,116 @@ function createOfflinePage() {
 }
 
 // --- Push / Notification handlers ---
-// We handle the push event DIRECTLY here instead of relying on Firebase's
-// onBackgroundMessage callback.  Root cause of mobile failure:
 //
-//   onBackgroundMessage is not reliably invoked on Android Chrome for FCM
-//   notification-type messages (messages that carry a "notification" field).
-//   Chrome on Android may route those to its own notification layer first and
-//   never call the SDK handler, resulting in silent delivery failures.
+// FCM payload: { notification: { title, body, icon }, data: { … }, fcmMessageId }.
+// Every data value is a string and missing keys mean "not set".
 //
-// Handling the push event manually gives us:
-//   • Guaranteed single notification per push (no SDK duplication)
-//   • Full control over icon / badge / vibrate / tag options
-//   • Works identically on Desktop, Android Chrome, and iOS 16.4+ PWA
-//
-// Firebase FCM JSON payload shapes:
-//   Notification message : { notification: {title,body,icon}, data:{…}, fcmMessageId }
-//   Data-only message    : { data:{…}, fcmMessageId }
-self.addEventListener("push", function (event) {
-  if (!event.data) return;
+// A notification is shown for EVERY push, even when the app is open: iOS
+// (installed PWA, 16.4+) requires it and stops delivering pushes to apps that
+// skip it, and Android/desktop show it the same way so staff never miss an alert.
 
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch (e) {
-    console.warn("SW: Failed to parse push payload as JSON:", e);
-    return;
+// Where a notification opens. The backend's actionUrl is a relative backend
+// path (e.g. /business/reservations/…), not a page here, so route on the event
+// and ids. Keep in sync with notificationPath() in src/lib/push-notifications.ts.
+function notificationPath(data) {
+  const d = data || {};
+  switch (d.event) {
+    case "NEW_MOBILITY_BOOKING":
+      return d.bookingId ? "/mobility/bookings/" + d.bookingId : "/mobility/bookings";
+    case "NEW_TICKET_PURCHASE":
+      return "/events";
+    case "NEW_RESERVATION":
+    case "GUEST_CANCELLED":
+      if (d.category === "FINE_DINING") return "/menu/reservations";
+      if (d.category === "ACCOMMODATION") return "/reservation-availability";
+      return "/notifications";
+    case "COURIER_CANCELLED":
+      return d.orderId ? "/orders/" + d.orderId : "/orders";
+    default:
+      // New orders, rider updates, scheduled orders… carry an orderId
+      return d.orderId ? "/orders/" + d.orderId : "/notifications";
   }
+}
 
-  // Support both FCM notification messages and data-only messages
-  const notification = payload.notification || {};
-  const data = payload.data || {};
+async function readPushPayload(event) {
+  if (!event.data) return {};
+  try {
+    return event.data.json();
+  } catch {
+    try {
+      const text = await event.data.text();
+      return text ? { notification: { body: text } } : {};
+    } catch {
+      return {};
+    }
+  }
+}
 
-  const title = notification.title || data.title || "MyPal Business";
-  const options = {
-    body: notification.body || data.body || "You have a new notification",
-    icon: notification.icon || data.icon || "/android-chrome-192x192.png",
-    badge: "/favicon-32x32.png",
-    vibrate: [100, 50, 100],
-    // requireInteraction omitted — breaks display on many Android versions
-    data: {
-      dateOfArrival: Date.now(),
-      url: data.url || data.actionUrl || "https://business.mypal-inc.com",
-      ...data,
-    },
-    actions: [
-      { action: "open", title: "Open App" },
-      { action: "dismiss", title: "Dismiss" },
-    ],
-    tag: data.tag || payload.fcmMessageId || "notification",
-    renotify: true,
-  };
+self.addEventListener("push", function (event) {
+  event.waitUntil(
+    (async () => {
+      const payload = await readPushPayload(event);
+      const notification = payload.notification || {};
+      const data = payload.data && typeof payload.data === "object" ? payload.data : {};
 
-  event.waitUntil(self.registration.showNotification(title, options));
+      const title = notification.title || data.title || "MyPal Business";
+      const body = notification.body || data.body || "You have a new notification";
+
+      // Fine dining requests wait on the business: a longer vibration (requireInteraction
+      // is left off — it stops notifications showing on some Android versions)
+      const requiresAction = data.requiresAction === "true";
+
+      try {
+        await self.registration.showNotification(title, {
+          body,
+          icon: notification.icon || data.icon || "/android-chrome-192x192.png",
+          badge: "/favicon-32x32.png",
+          vibrate: requiresAction ? [200, 100, 200, 100, 200] : [100, 50, 100],
+          // A distinct tag per notification, so a new alert never replaces an unread one
+          tag: data.notificationId || payload.fcmMessageId || "mypal-" + Date.now(),
+          renotify: true,
+          data: { ...data, path: notificationPath(data) },
+        });
+      } catch (error) {
+        console.warn("SW: showNotification failed, showing a plain one", error);
+        await self.registration.showNotification(title, { body, icon: "/android-chrome-192x192.png" });
+      }
+
+      // Open tabs refresh their notification inbox and unread badge
+      const windows = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      windows.forEach((client) => client.postMessage({ type: "PUSH_RECEIVED", data }));
+    })(),
+  );
 });
 
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
-
-  // Track notification interaction
-  const notificationId =
-    event.notification.data?.id || event.notification.data?.primaryKey;
-  if (notificationId && event.action !== "dismiss") {
-    // Mark notification as read when clicked (non-blocking)
-    markNotificationAsReadInSW(notificationId).catch((err) =>
-      console.warn("SW: Failed to mark notification as read:", err),
-    );
-  }
-
   if (event.action === "dismiss") return;
 
-  const targetUrl =
-    event.notification.data?.url || "https://business.mypal-inc.com";
+  const data = event.notification.data || {};
+  const path = data.path || notificationPath(data);
+
   event.waitUntil(
-    clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clientList) => {
-        for (let i = 0; i < clientList.length; i++) {
-          const client = clientList[i];
-          try {
-            const clientUrl = new URL(client.url);
-            const targetUrlObj = new URL(targetUrl);
-            if (clientUrl.origin === targetUrlObj.origin && "focus" in client)
-              return client.focus();
-          } catch (e) {
-            console.warn("SW: malformed client URL in notificationclick:", e);
-          }
+    (async () => {
+      const windows = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      const open = windows.find((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin;
+        } catch {
+          return false;
         }
-        if (clients.openWindow) return clients.openWindow(targetUrl);
-      }),
+      });
+
+      // An open tab navigates in-app (and marks the notification read with its session)
+      if (open) {
+        await open.focus();
+        open.postMessage({ type: "NOTIFICATION_CLICK", path, notificationId: data.notificationId });
+        return;
+      }
+      if (clients.openWindow) {
+        await clients.openWindow(new URL(path, self.location.origin).href);
+      }
+    })(),
   );
 });
 

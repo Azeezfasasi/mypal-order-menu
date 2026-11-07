@@ -17,6 +17,7 @@ import type {
   ReservationConfirmationDto,
   UnreadCountResponse,
 } from "@/types/notification-types";
+import { rememberPushToken } from "@/lib/push-token-storage";
 import { notificationQueryKeys } from "../notification-query-keys";
 import { apiClient, safeApiCall } from "./api-client";
 import { ENDPOINTS } from "./endpoints";
@@ -40,7 +41,24 @@ export const registerDeviceToken = async (
 };
 
 /**
- * Remove all device tokens for current user - Standalone Axios function
+ * Remove THIS device's token (logout). Always pass the token: without it the
+ * backend switches push off on every device of the account, including other
+ * staff members' devices.
+ */
+export const removeDeviceToken = async (
+  token: string,
+): Promise<{ message: string }> => {
+  return safeApiCall(() =>
+    apiClient.delete<
+      IBusinessSuccessResponse<{ message: string }> | IBusinessErrorResponse
+    >(ENDPOINTS.NOTIFICATIONS.REMOVE_USER_TOKENS, { params: { token } }),
+  );
+};
+
+/**
+ * Remove all device tokens for current user - Standalone Axios function.
+ * Signs push out on EVERY device of the account — only for an explicit
+ * "log out of all devices" action; use removeDeviceToken on normal logout.
  */
 export const removeUserTokens = async (): Promise<{ message: string }> => {
   return safeApiCall(() =>
@@ -206,8 +224,10 @@ export const createNotificationApi = () => {
           return response.data;
         },
 
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
           console.log("Token registered successfully:", data);
+          // Remembered so logout can remove exactly this device
+          rememberPushToken(variables.token);
           toast.success("Device token registered successfully");
         },
         onError: (error) => {
