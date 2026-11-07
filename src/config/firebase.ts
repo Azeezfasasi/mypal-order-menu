@@ -7,6 +7,7 @@
 
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
+  deleteToken,
   getMessaging,
   getToken,
   isSupported as isMessagingSupported,
@@ -75,11 +76,14 @@ if (isBrowser()) {
 
 // Initialize Firebase Cloud Messaging (only on client)
 let messaging: Messaging | null = null;
+// Resolves once the support check below has finished, so token calls made
+// right after page load don't fail just because messaging isn't ready yet
+let messagingReady: Promise<Messaging | null> = Promise.resolve(null);
 if (isBrowser()) {
   try {
     // Use Firebase's isSupported() to check whether the current browser
     // supports the Messaging SDK. This is the reliable, recommended check.
-    isMessagingSupported()
+    messagingReady = isMessagingSupported()
       .then((supported) => {
         if (supported && app) {
           try {
@@ -97,10 +101,12 @@ if (isBrowser()) {
           );
           messaging = null;
         }
+        return messaging;
       })
       .catch((err) => {
         console.warn("Error checking firebase.messaging.isSupported():", err);
         messaging = null;
+        return null;
       });
   } catch (e) {
     console.warn("Firebase messaging initialization error:", e);
@@ -125,6 +131,21 @@ export const resetFcmTokenPromise = () => {
   if (w) {
     delete w.__fcmTokenPromise;
     delete w.__registeredFCMToken;
+  }
+};
+
+/**
+ * Deletes this browser's FCM token (after logout, or when the backend rejects
+ * it), so the next getToken() issues a fresh one.
+ */
+export const deleteFcmToken = async (): Promise<void> => {
+  resetFcmTokenPromise();
+  const m = await messagingReady;
+  if (!m) return;
+  try {
+    await deleteToken(m);
+  } catch (err) {
+    console.warn("deleteToken failed:", err);
   }
 };
 
@@ -227,6 +248,7 @@ export const requestNotificationPermission = async (): Promise<
         }
       }
 
+      await messagingReady;
       if (!messaging) {
         console.warn("Firebase messaging not available");
         throw new Error("Firebase messaging not initialized");

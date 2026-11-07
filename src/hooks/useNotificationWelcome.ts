@@ -10,6 +10,7 @@ import {
 import { useRegisterDeviceToken } from "@/examples/notification-api-usage";
 import { Platform } from "@/types/enums";
 import { useEffect, useState } from "react";
+import { describeDevice } from "@/lib/push-notifications";
 
 export function useNotificationWelcome() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -93,7 +94,7 @@ export function useNotificationWelcome() {
               {
                 token: result.token!,
                 platform: Platform.WEB,
-                deviceInfo: navigator.userAgent,
+                deviceInfo: describeDevice(),
               },
               {
                 onSuccess: () => {

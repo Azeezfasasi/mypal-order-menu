@@ -21,6 +21,7 @@ import MessagingModal from "../messaging/messaging-modal";
 import { BusinessMessagingApi } from "@/services/api/business-messaging-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationApi } from "@/services/api/notification-api";
+import { unregisterThisDevice } from "@/lib/push-notifications";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -145,7 +146,9 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     return descriptions[path] || "Manage your Order Menu operations";
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Needs the session's JWT, so before clearSession
+    await unregisterThisDevice();
     try {
       actions.clearSession();
     } catch (err) {
