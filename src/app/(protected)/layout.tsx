@@ -4,6 +4,7 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import DashboardSidebar from "@/components/dashboard/dashboard-sidebar";
 import { NotificationBanner } from "@/components/notifications/notification-banner";
 import { NotificationWelcomeModal } from "@/components/notifications/notification-welcome-modal";
+import { PushNotificationListener } from "@/components/notifications/push-notification-listener";
 import ProtectedRoute from "@/components/protected-route";
 import SafeNotificationWrapper from "@/components/safe-notification-wrapper";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -81,6 +82,7 @@ export default function DashboardLayout({
             onClose={handleClose}
           />
           <NotificationBanner />
+          <PushNotificationListener />
         </SafeNotificationWrapper>
       </div>
     </ProtectedRoute>

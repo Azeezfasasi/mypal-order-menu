@@ -30,6 +30,7 @@ import type {
 import { toast } from "sonner";
 import { apiClient } from "./api-client";
 import { ENDPOINTS } from "./endpoints";
+import { unregisterThisDevice } from "@/lib/push-notifications";
 
 export const createBusinessAuthApi = () => {
   return {
@@ -125,6 +126,7 @@ export const createBusinessAuthApi = () => {
       useMutation({
         retry: 0,
         mutationFn: async () => {
+          await unregisterThisDevice();
           await apiClient.post(ENDPOINTS.BUSINESS_AUTH.LOGOUT);
           // Use the new auth store clear session action
           useAuthStore.getState().actions.clearSession();

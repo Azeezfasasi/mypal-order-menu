@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { unregisterThisDevice } from "@/lib/push-notifications";
 
 export interface AccountItem {
   id: string;
@@ -44,12 +45,13 @@ export default function AccountSwitcher({
   // Use provided accounts or empty array
   const list = accounts || [];
 
-  function handleSignOut() {
+  async function handleSignOut() {
     if (onSignOut) {
       onSignOut();
       return;
     }
-    // Default sign out behavior
+    // Default sign out behavior — remove this device from push while the JWT is still valid
+    await unregisterThisDevice();
     try {
       clearSession();
     } catch {
