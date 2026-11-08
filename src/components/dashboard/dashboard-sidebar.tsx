@@ -92,6 +92,16 @@ export default function DashboardSidebar({
         ]
       : []
     ),
+    ...(selectedBusinessType === BusinessCategoryType.BEACHHOUSES
+      ? [
+          {
+            title: "Bookings",
+            href: "/beach-houses/bookings",
+            icon: CalendarCheck,
+          },
+        ]
+      : []
+    ),
     ...(isMobilityBusiness(selectedBusinessType)
       ? [
           {

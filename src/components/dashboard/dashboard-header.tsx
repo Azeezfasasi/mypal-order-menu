@@ -118,9 +118,16 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
   // Get page title from pathname
   const getPageTitle = () => {
-    const path = pathname.split("/").pop() || "dashboard";
+    const segments = pathname.split("/").filter(Boolean);
+    let path = segments.pop() || "dashboard";
 
     if (path === "dashboard") return "Menu Management";
+    // Detail pages end in an id (e.g. /beach-houses/bookings/<uuid>): title them by their list
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(path)) {
+      const parent = segments.pop() ?? "";
+      if (parent === "bookings") return "Booking Details";
+      path = parent || "dashboard";
+    }
 
     return path
       .split("-")
