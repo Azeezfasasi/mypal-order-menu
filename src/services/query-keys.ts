@@ -340,3 +340,23 @@ export const MOBILITY_QUERY_KEYS = {
   drivers: (params?: Record<string, unknown>) =>
     [...MOBILITY_QUERY_KEYS.all, "drivers", { params }] as const,
 } as const;
+
+export const BEACH_HOUSE_QUERY_KEYS = {
+  all: ["beach-houses"] as const,
+  collections: () => [...BEACH_HOUSE_QUERY_KEYS.all, "collections"] as const,
+  listings: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "listings", { params }] as const,
+  listing: (id: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "listing", id] as const,
+  amenities: (type: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "amenities", type] as const,
+  experiences: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "experiences", { params }] as const,
+  experience: (id: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "experience", id] as const,
+  experienceCategories: () => [...BEACH_HOUSE_QUERY_KEYS.all, "experience-categories"] as const,
+  experienceCharges: () => [...BEACH_HOUSE_QUERY_KEYS.all, "experience-charges"] as const,
+  cancellationPolicies: () => [...BEACH_HOUSE_QUERY_KEYS.all, "cancellation-policies"] as const,
+  bookings: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "bookings", { params }] as const,
+  booking: (id: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "booking", id] as const,
+  calendar: (listingId: string, month: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "calendar", listingId, month] as const,
+  listingDay: (listingId: string, date: string) => [...BEACH_HOUSE_QUERY_KEYS.all, "listing-day", listingId, date] as const,
+  experienceSchedule: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "experience-schedule", { params }] as const,
+  dayView: (params: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "day-view", { params }] as const,
+  reviews: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "reviews", { params }] as const,
+} as const;

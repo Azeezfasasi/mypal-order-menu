@@ -684,4 +684,38 @@ export const ENDPOINTS = {
     UNLINK_MENU_ITEMS: (branchId: string, itemId: string) =>
       `/branches/${branchId}/menu-items/${itemId}`,
   },
+
+  // Beach Houses business mobile "Edit by day" (B5)
+  BEACH_HOUSES: {
+    DAY_VIEW: "/beach-houses/business/day-view",
+    COLLECTIONS: "/beach-houses/collections",
+    LISTINGS: "/beach-houses/business/listings",
+    LISTING: (id: string) => `/beach-houses/business/listings/${id}`,
+    LISTING_STATUS: (id: string) => `/beach-houses/business/listings/${id}/status`,
+    LISTING_HOUSE_RULES: (id: string) => `/beach-houses/business/listings/${id}/house-rules`,
+    AMENITIES: "/beach-houses/business/amenities",
+    AMENITY_SELECTION: (id: string) => `/beach-houses/business/amenities/${id}/selection`,
+    EXPERIENCES: "/beach-houses/business/experiences",
+    EXPERIENCE: (id: string) => `/beach-houses/business/experiences/${id}`,
+    EXPERIENCE_AVAILABILITY: (id: string) => `/beach-houses/business/experiences/${id}/availability`,
+    EXPERIENCE_CATEGORIES: "/beach-houses/business/experience-categories",
+    EXPERIENCE_CATEGORY: (id: string) => `/beach-houses/business/experience-categories/${id}`,
+    EXPERIENCE_CATEGORIES_ORDER: "/beach-houses/business/experience-categories/order",
+    EXPERIENCE_CHARGES: "/beach-houses/business/experience-charges",
+    // Types contain spaces (SERVICE CHARGE, TOURISM FEE) — URL-encoded
+    EXPERIENCE_CHARGE: (type: string) => `/beach-houses/business/experience-charges/${encodeURIComponent(type)}`,
+    BOOKINGS: "/beach-houses/business/bookings",
+    BOOKING: (id: string) => `/beach-houses/business/bookings/${id}`,
+    BOOKING_ACTION: (id: string, action: "check-in" | "complete" | "no-show") => `/beach-houses/business/bookings/${id}/${action}`,
+    BOOKING_CANCEL: (id: string) => `/beach-houses/business/bookings/${id}/cancel`,
+    DEPOSIT_CLAIM: (id: string) => `/beach-houses/business/bookings/${id}/deposit/claim`,
+    DEPOSIT_RELEASE: (id: string) => `/beach-houses/business/bookings/${id}/deposit/release`,
+    MANUAL_BOOKING: (listingId: string) => `/beach-houses/business/listings/${listingId}/manual-bookings`,
+    LISTING_CALENDAR: (listingId: string) => `/beach-houses/business/listings/${listingId}/calendar`,
+    LISTING_DAY: (listingId: string) => `/beach-houses/business/listings/${listingId}/day`,
+    LISTING_AVAILABILITY: (listingId: string) => `/beach-houses/business/listings/${listingId}/availability`,
+    EXPERIENCE_SCHEDULE: "/beach-houses/business/experience-schedule",
+    REVIEWS: "/beach-houses/business/reviews",
+    REVIEW_REPLY: (id: string) => `/beach-houses/business/reviews/${id}/reply`,
+  },
 } as const;

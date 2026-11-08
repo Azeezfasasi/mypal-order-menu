@@ -129,11 +129,18 @@ export async function safeApiCall<T>(
     if (axios.isAxiosError(error)) {
       // Handle Axios specific errors
       const axiosError = error as AxiosError<IBusinessErrorResponse>;
-      throw new Error(
+      const safeError = new Error(
         axiosError.response?.data?.message ||
           axiosError.message ||
           "An unexpected error occurred",
       );
+      // Keep the HTTP status and body so callers can branch on 400 / 409 / 422
+      // (e.g. retry with a fresh push token, highlight data.missing fields)
+      Object.assign(safeError, {
+        status: axiosError.response?.status,
+        response: axiosError.response,
+      });
+      throw safeError;
     }
 
     // Rethrow if it's not an Axios error
