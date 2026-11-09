@@ -10,6 +10,8 @@ import FineDiningOverview from '@/components/dashboard/fine-dining/FineDiningOve
 import MobilityFleetPage from "@/components/mobility/MobilityFleetPage";
 import { isMobilityBusiness } from "@/types/mobility-types";
 import BeachHousesDayView from "@/components/beach-houses/BeachHousesDayView";
+import BoatDayView from "@/components/boat-cruises/BoatDayView";
+import { isBoatCruiseBusiness } from "@/types/boat-cruise-types";
 
 // Every business category this dashboard currently knows how to route to.
 // Shown to the user when their account matches none of them.
@@ -22,6 +24,7 @@ const SUPPORTED_CATEGORIES = [
   "Luxury on Demand",
   "Household Logistics",
   "Beach Houses",
+  "Boat and Yacht cruises",
 ];
 
 export default function DashboardPage() {
@@ -52,10 +55,11 @@ export default function DashboardPage() {
     categoryType.includes("finedining");
   const isMobility = isMobilityBusiness(business?.category?.business_type);
   const isBeachHouses = categoryType === "beach houses" || categoryName === "beach houses";
+  const isBoatCruises = isBoatCruiseBusiness(business?.category?.business_type ?? business?.category?.name);
   const canAccessOrders = isIconicDelicacy || isMainstream;
 
   // No known section matches this account's category at all
-  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining && !isMobility && !isBeachHouses;
+  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining && !isMobility && !isBeachHouses && !isBoatCruises;
 
   return (
     <>
@@ -65,7 +69,7 @@ export default function DashboardPage() {
           {/* Greetings */}
           <div>
             <h1 className="md:text-[12px] text-[22px] text-[#DB3A07] leading-[100%] font-bold">Good morning, <br /> <span className="text-[#031927] font-extrabold md:text-[16px] text-[20px] leading-[100%]">{business?.business_name || "Guest"}</span> 👋</h1>
-            {(isIconicDelicacy || isBeachHouses) && (
+            {(isIconicDelicacy || isBeachHouses || isBoatCruises) && (
             <p className="md:text-[12px] text-[14px] font-bold text-[#68798A] leading-[100%] flex items-center gap-1 mt-1">
               Order Manager
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
@@ -120,6 +124,8 @@ export default function DashboardPage() {
       {isMobility && <MobilityFleetPage />}
 
       {isBeachHouses && <BeachHousesDayView />}
+
+      {isBoatCruises && <BoatDayView />}
     </>
   )
 }
