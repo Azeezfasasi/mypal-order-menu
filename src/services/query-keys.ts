@@ -360,3 +360,21 @@ export const BEACH_HOUSE_QUERY_KEYS = {
   dayView: (params: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "day-view", { params }] as const,
   reviews: (params?: Record<string, unknown>) => [...BEACH_HOUSE_QUERY_KEYS.all, "reviews", { params }] as const,
 } as const;
+
+export const BOAT_CRUISE_QUERY_KEYS = {
+  all: ["boat-cruises"] as const,
+  boats: (params?: Record<string, unknown>) => [...BOAT_CRUISE_QUERY_KEYS.all, "boats", { params }] as const,
+  boat: (id: string) => [...BOAT_CRUISE_QUERY_KEYS.all, "boat", id] as const,
+  boatTypes: () => [...BOAT_CRUISE_QUERY_KEYS.all, "boat-types"] as const,
+  amenities: () => [...BOAT_CRUISE_QUERY_KEYS.all, "amenities"] as const,
+  policyTemplates: () => [...BOAT_CRUISE_QUERY_KEYS.all, "policy-templates"] as const,
+  businessPolicies: () => [...BOAT_CRUISE_QUERY_KEYS.all, "business-policies"] as const,
+  bookings: (params?: Record<string, unknown>) => [...BOAT_CRUISE_QUERY_KEYS.all, "bookings", { params }] as const,
+  booking: (id: string) => [...BOAT_CRUISE_QUERY_KEYS.all, "booking", id] as const,
+  reviews: (params?: Record<string, unknown>) => [...BOAT_CRUISE_QUERY_KEYS.all, "reviews", { params }] as const,
+  grid: (start: string, end: string) => [...BOAT_CRUISE_QUERY_KEYS.all, "grid", start, end] as const,
+  inventoryItems: () => [...BOAT_CRUISE_QUERY_KEYS.all, "inventory-items"] as const,
+  dayView: (params: Record<string, unknown>) => [...BOAT_CRUISE_QUERY_KEYS.all, "day-view", { params }] as const,
+  listingDay: (id: string, date: string) => [...BOAT_CRUISE_QUERY_KEYS.all, "listing-day", id, date] as const,
+  travelAgencies: () => [...BOAT_CRUISE_QUERY_KEYS.all, "travel-agencies"] as const,
+};

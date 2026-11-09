@@ -718,4 +718,32 @@ export const ENDPOINTS = {
     REVIEWS: "/beach-houses/business/reviews",
     REVIEW_REPLY: (id: string) => `/beach-houses/business/reviews/${id}/reply`,
   },
+
+  // Boat & Yacht Cruises (docs/BOAT_CRUISES_FRONTEND_INTEGRATION_GUIDE.md)
+  BOAT_CRUISES: {
+    LISTINGS: "/boat-cruises/business/listings",
+    LISTING: (id: string) => `/boat-cruises/business/listings/${id}`,
+    LISTING_STATUS: (id: string) => `/boat-cruises/business/listings/${id}/status`,
+    LISTING_ACTIVE: (id: string) => `/boat-cruises/business/listings/${id}/active`,
+    TERMS_DOCUMENT: (id: string) => `/boat-cruises/business/listings/${id}/terms-document`,
+    IMAGES: "/boat-cruises/business/images",
+    BOAT_TYPES: "/boat-cruises/business/boat-types",
+    AMENITIES: "/boat-cruises/business/amenities",
+    POLICY_TEMPLATES: "/boat-cruises/business/cancellation-policy-templates",
+    BOOKINGS: "/boat-cruises/business/bookings",
+    BOOKING: (id: string) => `/boat-cruises/business/bookings/${id}`,
+    BOOKING_ACTION: (id: string, action: "check-in" | "complete" | "no-show") => `/boat-cruises/business/bookings/${id}/${action}`,
+    BOOKING_CANCEL: (id: string) => `/boat-cruises/business/bookings/${id}/cancel`,
+    REVIEWS: "/boat-cruises/business/reviews",
+    DAY_VIEW: "/boat-cruises/business/day-view",
+    LISTING_DAY: (id: string) => `/boat-cruises/business/listings/${id}/day`,
+    LISTING_AVAILABILITY: (id: string) => `/boat-cruises/business/listings/${id}/availability`,
+    REVIEW_REPLY: (id: string) => `/boat-cruises/business/reviews/${id}/reply`,
+    // Shared dashboard endpoints used by the boat screens
+    INVENTORY_GRID: "/dashboard/offerings-inventory/grid",
+    INVENTORY_BLOCK: "/dashboard/offerings-inventory/state/block",
+    INVENTORY_ITEMS: "/dashboard/offerings-reservations/inventory-items",
+    MANUAL_BOOKING: "/dashboard/offerings-reservations/manual",
+    TRAVEL_AGENCIES: "/dashboard/travel-agencies",
+  },
 } as const;

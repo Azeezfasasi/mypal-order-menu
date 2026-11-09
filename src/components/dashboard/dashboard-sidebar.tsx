@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { BusinessCategoryType } from "@/types/enums";
 import { isMobilityBusiness } from "@/types/mobility-types";
+import { isBoatCruiseBusiness } from "@/types/boat-cruise-types";
 import {
   CalendarCheck,
   ChevronLeft,
@@ -89,6 +90,16 @@ export default function DashboardSidebar({
             href: "/table-management",
             icon: UtensilsCrossed,
           }
+        ]
+      : []
+    ),
+    ...(isBoatCruiseBusiness(selectedBusinessType)
+      ? [
+          {
+            title: "Bookings & Availability",
+            href: "/boat-cruises",
+            icon: CalendarCheck,
+          },
         ]
       : []
     ),
