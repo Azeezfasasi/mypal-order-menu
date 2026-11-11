@@ -242,7 +242,18 @@ function CancelDialog({ booking, onOpenChange }: { booking: BookingSummary | nul
         <DialogHeader>
           <DialogTitle>Cancel {booking?.reservation_id}?</DialogTitle>
           <DialogDescription>
-            The guest is refunded <span className="font-semibold">100%</span> ({formatNaira(booking?.total)}) to their MyPal wallet. This can&apos;t be undone.
+            {booking?.source && booking.source !== "MOBILE" ? (
+              <>This booking was paid offline, so no wallet refund is made. Settle any refund with the guest directly.</>
+            ) : booking?.source === "MOBILE" ? (
+              <>
+                The guest is refunded <span className="font-semibold">100%</span> ({formatNaira(booking.total)}) to their MyPal wallet.
+              </>
+            ) : (
+              <>
+                Bookings paid in the MyPal app are refunded <span className="font-semibold">100%</span> ({formatNaira(booking?.total)}) to the guest&apos;s wallet. Walk-in and phone bookings were paid offline, so settle those refunds directly.
+              </>
+            )}{" "}
+            This can&apos;t be undone.
           </DialogDescription>
         </DialogHeader>
         <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for cancelling" />
@@ -258,7 +269,7 @@ function CancelDialog({ booking, onOpenChange }: { booking: BookingSummary | nul
                 { id: booking.id, reason: reason.trim() },
                 {
                   onSuccess: () => {
-                    toast.success("Booking cancelled — the guest has been refunded");
+                    toast.success(booking?.source === "MOBILE" ? "Booking cancelled — the guest has been refunded" : "Booking cancelled");
                     onOpenChange(false);
                   },
                   onError: (error) => toast.error(apiMessage(error)),
