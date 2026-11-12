@@ -22,7 +22,7 @@ import { DealsApi } from "@/services/api/deals-api";
 import { IDeal, IDealListItem } from "@/types/deal-types";
 import { BusinessCategoryType, EventClass, EventType } from "@/types/enums";
 import { IEvent, IEventListItem } from "@/types/event-types";
-import { Calendar, Plus, PlusIcon, Tag } from "lucide-react";
+import { Calendar, Plus, PlusIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -178,10 +178,10 @@ export default function EventsPage() {
             <Calendar className="h-4 w-4" />
             Events
           </TabsTrigger>
-          <TabsTrigger value="deals" className="flex items-center gap-2">
+          {/* <TabsTrigger value="deals" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Deals
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         {/* Events Tab Content */}
