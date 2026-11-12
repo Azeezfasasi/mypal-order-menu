@@ -746,4 +746,9 @@ export const ENDPOINTS = {
     MANUAL_BOOKING: "/dashboard/offerings-reservations/manual",
     TRAVEL_AGENCIES: "/dashboard/travel-agencies",
   },
+
+  // Event Promoter dashboard (FE-25)
+  PROMOTER_DASHBOARD: {
+    GET_OVERVIEW: "/events/promoter/dashboard-overview",
+  },
 } as const;

@@ -44,6 +44,9 @@ import { apiMessage, DEPOSIT_STYLES, formatDay, formatTimestamp, guestsSummary, 
 
 const CLAIM_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+/** Walk-in, phone and third-party bookings are paid offline, so cancelling refunds nothing to the wallet */
+const isPaidOffline = (b: Pick<BookingDetail, "source">) => Boolean(b.source && b.source !== "MOBILE");
+
 const ACTION_COPY = {
   "check-in": { done: "Guest checked in", label: "Check in" },
   complete: { done: "Stay completed — the 48-hour deposit window has started", label: "Complete stay" },
@@ -236,7 +239,11 @@ export function BookingDetailView({ id }: { id: string }) {
               <CardContent className="space-y-1 text-sm text-gray-700">
                 <p>Cancelled {formatTimestamp(booking.cancellation.cancelled_at)}{booking.cancellation.cancelled_by ? ` by ${booking.cancellation.cancelled_by}` : ""}</p>
                 {booking.cancellation.reason && <p>Reason: {booking.cancellation.reason}</p>}
-                {booking.cancellation.refund_amount !== undefined && <p>Refunded to the guest&apos;s wallet: {formatNaira(booking.cancellation.refund_amount)}</p>}
+                {isPaidOffline(booking) && !booking.cancellation.refund_amount ? (
+                  <p>Paid offline, so no wallet refund was made. Settle any refund with the guest directly.</p>
+                ) : booking.cancellation.refund_amount !== undefined ? (
+                  <p>Refunded to the guest&apos;s wallet: {formatNaira(booking.cancellation.refund_amount)}</p>
+                ) : null}
               </CardContent>
             </Card>
           )}
@@ -468,7 +475,13 @@ function CancelDialog({ open, booking, onOpenChange }: { open: boolean; booking:
         <DialogHeader>
           <DialogTitle>Cancel {booking.reservation_id}?</DialogTitle>
           <DialogDescription>
-            The guest is refunded <span className="font-semibold">100%</span> ({formatNaira(booking.total)}) to their MyPal wallet. This can&apos;t be undone.
+            {isPaidOffline(booking) ? (
+              <>This booking was paid offline, so no wallet refund is made. Settle any refund with the guest directly. This can&apos;t be undone.</>
+            ) : (
+              <>
+                The guest is refunded <span className="font-semibold">100%</span> ({formatNaira(booking.total)}) to their MyPal wallet. This can&apos;t be undone.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -486,7 +499,7 @@ function CancelDialog({ open, booking, onOpenChange }: { open: boolean; booking:
                 { id: booking.id, reason: reason.trim() },
                 {
                   onSuccess: () => {
-                    toast.success("Booking cancelled — the guest has been refunded");
+                    toast.success(isPaidOffline(booking) ? "Booking cancelled" : "Booking cancelled — the guest has been refunded");
                     onOpenChange(false);
                   },
                   onError: (error) => toast.error(apiMessage(error)),

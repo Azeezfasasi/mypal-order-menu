@@ -103,6 +103,17 @@ export default function DashboardSidebar({
         ]
       : []
     ),
+    // Event Promoters only manage events
+    ...(selectedBusinessType === BusinessCategoryType.EVENTPROMOTERS
+      ? [
+          {
+            title: "Events",
+            href: "/events",
+            icon: CalendarCheck,
+          },
+        ]
+      : []
+    ),
     ...(selectedBusinessType === BusinessCategoryType.BEACHHOUSES
       ? [
           {

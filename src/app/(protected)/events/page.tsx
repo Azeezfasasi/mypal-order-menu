@@ -86,6 +86,13 @@ export default function EventsPage() {
     DealsApi.useGetBusinessUpcomingDeals();
 
   const handleCreateEvent = () => setShowEventTypeModal(true);
+
+  // "Create New Event" on the promoter dashboard links here with ?create=event
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("create") !== "event") return;
+    setShowEventTypeModal(true);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
   const handleEventTypeSelect = (eventClass: EventClass) => {
     const eventType =
       eventClass === EventClass.EXCLUSIVE
