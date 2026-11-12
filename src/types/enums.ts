@@ -43,6 +43,7 @@ export enum BusinessCategoryType {
   BOATYATCHCRUISE = "Boat and Yachts cruises",
   SHORTLET = "Short-let homes",
   BEACHHOUSES = "Beach Houses",
+  EVENTPROMOTERS = "Event Promoters",
   CLUB = "Club",
   PARKSRECREATION = "Parks & Recreation",
   BEACHESRESORTACCOMMODATION = "Beaches & Resort Accommodation",
