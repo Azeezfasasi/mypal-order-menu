@@ -54,6 +54,8 @@ export default function EventsPage() {
   const canCreateExclusiveEvents =
     business?.category?.business_type === BusinessCategoryType.BEACHESRESORTS ||
     business?.category?.business_type === BusinessCategoryType.PARKSRECREATION;
+  // Event Promoters only create regular events for now, so the exclusive option is hidden
+  const isEventPromoter = business?.category?.business_type === BusinessCategoryType.EVENTPROMOTERS;
   
   // check the backend data structure for /v1/events/admin/create
   useEffect(() => {
@@ -320,12 +322,12 @@ export default function EventsPage() {
 
       {/* Event Class Selection Modal */}
       <Dialog open={showEventTypeModal} onOpenChange={setShowEventTypeModal}>
-        <DialogContent className="max-w-2xl md:w-[95%] rounded-[8px] p-10 md:py-6 md:px-4">
+        <DialogContent className={`${isEventPromoter ? "max-w-md" : "max-w-2xl"} md:w-[95%] rounded-[8px] p-10 md:py-6 md:px-4`}>
           <div className="text-center mb-8">
             <h2 className="text-[24px] font-bold text-gray-900 leading-[100%]">Create Event</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-1 gap-6">
+          <div className={`grid ${isEventPromoter ? "grid-cols-1" : "grid-cols-2"} md:grid-cols-1 gap-6`}>
             {/* Regular Event Card */}
             <div className="h-[175px] bg-[#FEF2EE] rounded-[10px] p-8 flex flex-col border border-[#DBDBDB]">
               <div className="mb-6">
@@ -348,8 +350,8 @@ export default function EventsPage() {
               </Button>
             </div>
 
-            {/* Exclusive Event Card */}
-            {canCreateExclusiveEvents ? (
+            {/* Exclusive Event Card (not offered to Event Promoters) */}
+            {isEventPromoter ? null : canCreateExclusiveEvents ? (
               <div className="bg-[#E9F0FD] rounded-[10px] p-8 flex flex-col border border-[#DBDBDB]">
                 <div className="mb-6">
                   <h3 className="text-[16px] font-bold leading-[100%] text-center text-blue-600 mb-2">
