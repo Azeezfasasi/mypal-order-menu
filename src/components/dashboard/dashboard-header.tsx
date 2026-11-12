@@ -116,12 +116,15 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
   }, [category, rawBusinessCategory, linkedAccounts, handleBusinessSwitch, queryClient])
 
+  // Event Promoters only manage events, so their pages aren't "Menu Management"
+  const isEventPromoter = rawBusinessCategory.toLowerCase() === "event promoters";
+
   // Get page title from pathname
   const getPageTitle = () => {
     const segments = pathname.split("/").filter(Boolean);
     let path = segments.pop() || "dashboard";
 
-    if (path === "dashboard") return "Menu Management";
+    if (path === "dashboard") return isEventPromoter ? "Event Dashboard" : "Menu Management";
     // Detail pages end in an id (e.g. /beach-houses/bookings/<uuid>): title them by their list
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(path)) {
       const parent = segments.pop() ?? "";
@@ -150,6 +153,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     };
 
     const path = pathname.split("/").pop() || "overview";
+    if (isEventPromoter) return descriptions[path] || "Track ticket sales and manage your events";
     return descriptions[path] || "Manage your Order Menu operations";
   };
 
