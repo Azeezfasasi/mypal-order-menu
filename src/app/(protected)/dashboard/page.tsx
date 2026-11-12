@@ -11,6 +11,7 @@ import MobilityFleetPage from "@/components/mobility/MobilityFleetPage";
 import { isMobilityBusiness } from "@/types/mobility-types";
 import BeachHousesDayView from "@/components/beach-houses/BeachHousesDayView";
 import BoatDayView from "@/components/boat-cruises/BoatDayView";
+import EventPromoterDashboard from "@/components/promoter/EventPromoterDashboard";
 import { isBoatCruiseBusiness } from "@/types/boat-cruise-types";
 
 // Every business category this dashboard currently knows how to route to.
@@ -25,6 +26,7 @@ const SUPPORTED_CATEGORIES = [
   "Household Logistics",
   "Beach Houses",
   "Boat and Yacht cruises",
+  "Event Promoters",
 ];
 
 export default function DashboardPage() {
@@ -56,14 +58,16 @@ export default function DashboardPage() {
   const isMobility = isMobilityBusiness(business?.category?.business_type);
   const isBeachHouses = categoryType === "beach houses" || categoryName === "beach houses";
   const isBoatCruises = isBoatCruiseBusiness(business?.category?.business_type ?? business?.category?.name);
+  const isEventPromoter = categoryType === "event promoters" || categoryName === "event promoters";
   const canAccessOrders = isIconicDelicacy || isMainstream;
 
   // No known section matches this account's category at all
-  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining && !isMobility && !isBeachHouses && !isBoatCruises;
+  const isUnauthorized = !canAccessOrders && !isHotelExperience && !isShortlet && !isFineDining && !isMobility && !isBeachHouses && !isBoatCruises && !isEventPromoter;
 
   return (
     <>
-      {/* Welcome Section */}
+      {/* Welcome Section (the promoter dashboard has its own "Hi, …" header) */}
+      {!isEventPromoter && (
       <div className="flex items-center mb-6 gap-4">
         <div>
           {/* Greetings */}
@@ -90,6 +94,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
       <div className="mb-4">
         <BusinessAccountSwitcher />
@@ -126,6 +131,8 @@ export default function DashboardPage() {
       {isBeachHouses && <BeachHousesDayView />}
 
       {isBoatCruises && <BoatDayView />}
+
+      {isEventPromoter && <EventPromoterDashboard />}
     </>
   )
 }
